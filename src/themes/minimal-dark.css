@@ -1,0 +1,29 @@
+/* @theme {"name":"极简深色","appearance":"dark","description":"纯色近黑背景、灰蓝点缀与轻量阴影。","order":30} */
+:root {
+  --bg: #111315;
+  --bg-grad: linear-gradient(#111315, #111315);
+  --surface: #17191c;
+  --surface-2: #1e2125;
+  --surface-3: #262a2f;
+  --border: #292d32;
+  --border-strong: #383d44;
+  --text: #eceef0;
+  --text-2: #a2a7ae;
+  --text-3: #686f78;
+  --accent: #8299ae;
+  --accent-hover: #9aafc2;
+  --accent-soft: rgba(130, 153, 174, 0.12);
+  --accent-ring: rgba(130, 153, 174, 0.24);
+  --code-bg: #141619;
+  --mark: rgba(202, 176, 92, 0.2);
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.22);
+  --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.26);
+  --shadow-lg: 0 18px 44px rgba(0, 0, 0, 0.34);
+  --tok-key: #c7a0b8;
+  --tok-str: #9eb7a5;
+  --tok-num: #c4aa86;
+  --tok-com: #60666e;
+  --tok-func: #9bafc2;
+  --tok-type: #aaa5bd;
+  --tok-attr: #91a6b8;
+}

@@ -1,0 +1,29 @@
+/* @theme {"name":"清新亮色","appearance":"light","description":"明亮、柔和，保留青绿色点缀。","order":10} */
+:root {
+  --bg: #f5f8f8;
+  --bg-grad: radial-gradient(1200px 600px at 50% -10%, #e8f6f4 0%, #f5f8f8 55%);
+  --surface: #ffffff;
+  --surface-2: #eef3f3;
+  --surface-3: #e4ecec;
+  --border: #e3eaea;
+  --border-strong: #d3dedd;
+  --text: #16232b;
+  --text-2: #5d7078;
+  --text-3: #98a9ad;
+  --accent: #0f9d8f;
+  --accent-hover: #0b8579;
+  --accent-soft: rgba(15, 157, 143, 0.1);
+  --accent-ring: rgba(15, 157, 143, 0.28);
+  --code-bg: #f2f6f6;
+  --mark: #d9f5b8;
+  --shadow-sm: 0 1px 2px rgba(16, 32, 40, 0.05);
+  --shadow-md: 0 6px 20px rgba(16, 40, 44, 0.08);
+  --shadow-lg: 0 18px 48px rgba(16, 40, 44, 0.14);
+  --tok-key: #b4299a;
+  --tok-str: #0a7c5a;
+  --tok-num: #c2410c;
+  --tok-com: #93a3a6;
+  --tok-func: #2563eb;
+  --tok-type: #7c3aed;
+  --tok-attr: #0369a1;
+}

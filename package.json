@@ -1,0 +1,87 @@
+{
+  "name": "jianmo",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "main": "dist-electron/main.js",
+  "description": "简墨 — 简洁专注的 Markdown 编辑器（Tiptap 3 + React 19 + Vite）",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "typecheck": "tsc --noEmit",
+    "check:md": "node --experimental-strip-types scripts/check-markdown.mts",
+    "start": "node scripts/dev.mjs",
+    "dev:all": "node scripts/dev.mjs",
+    "electron:compile": "tsc -p electron/tsconfig.json && node scripts/electron-cjs.mjs",
+    "electron:dev": "npm run electron:compile && node scripts/run-electron.mjs .",
+    "electron:unpacked": "npm run build && npm run electron:compile && electron-builder --win --dir",
+    "electron:installer": "npm run build && npm run electron:compile && electron-builder --win nsis",
+    "electron:portable": "npm run build && npm run electron:compile && electron-builder --win portable",
+    "electron:build": "npm run electron:unpacked",
+    "electron:dist": "npm run build && npm run electron:compile && electron-builder --win"
+  },
+  "dependencies": {
+    "@tiptap/core": "3.31.2",
+    "@tiptap/extension-code-block-lowlight": "3.31.2",
+    "@tiptap/extension-highlight": "3.31.2",
+    "@tiptap/extension-table": "3.31.2",
+    "@tiptap/extension-table-cell": "3.31.2",
+    "@tiptap/extension-table-header": "3.31.2",
+    "@tiptap/extension-table-row": "3.31.2",
+    "@tiptap/extension-task-item": "3.31.2",
+    "@tiptap/extension-task-list": "3.31.2",
+    "@tiptap/extensions": "3.31.2",
+    "@tiptap/pm": "3.31.2",
+    "@tiptap/react": "3.31.2",
+    "@tiptap/starter-kit": "3.31.2",
+    "@tiptap/suggestion": "^3.31.2",
+    "fflate": "^0.8.2",
+    "highlight.js": "11.12.0",
+    "lowlight": "3.3.0",
+    "lucide-react": "1.40.0",
+    "marked": "18.0.11",
+    "react": "19.2.8",
+    "react-dom": "19.2.8",
+    "turndown": "7.2.4",
+    "turndown-plugin-gfm": "1.0.2"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.1",
+    "@types/react": "19.2.18",
+    "@types/react-dom": "19.2.7",
+    "@types/turndown": "5.0.6",
+    "@vitejs/plugin-react": "6.1.1",
+    "electron": "^44.2.0",
+    "electron-builder": "^26.15.3",
+    "typescript": "5.9.3",
+    "vite": "8.2.2"
+  },
+  "build": {
+    "appId": "com.jianmo.app",
+    "productName": "简墨",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**/*",
+      "dist-electron/**/*",
+      "package.json"
+    ],
+    "win": {
+      "icon": "build/icon.ico",
+      "target": [
+        "nsis",
+        "portable"
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "shortcutName": "简墨",
+      "artifactName": "Jianmo-Setup-${version}-${arch}.${ext}"
+    },
+    "portable": {
+      "artifactName": "Jianmo-Portable-${version}-${arch}.${ext}"
+    }
+  }
+}

@@ -1,0 +1,497 @@
+/* ============================================================
+   Tiptora · 编辑区排版
+   ============================================================ */
+.editor-shell {
+  position: relative;
+}
+
+.tiptap {
+  outline: none;
+  font-size: 16.5px;
+  line-height: 1.85;
+  color: var(--text);
+  letter-spacing: 0.01em;
+  word-break: break-word;
+  caret-color: var(--accent);
+  min-height: calc(100vh - var(--topbar-h) - var(--toolbar-h) - var(--status-h) - 120px);
+}
+
+.tiptap > * + * {
+  margin-top: 0.85em;
+}
+
+/* ---------- 标题 ---------- */
+.tiptap h1,
+.tiptap h2,
+.tiptap h3,
+.tiptap h4,
+.tiptap h5,
+.tiptap h6 {
+  font-weight: 650;
+  line-height: 1.4;
+  letter-spacing: -0.01em;
+  scroll-margin-top: 24px;
+}
+.tiptap > h1,
+.tiptap > h2,
+.tiptap > h3,
+.tiptap > h4 {
+  margin-top: 1.9em;
+  margin-bottom: 0.1em;
+}
+.tiptap h1 {
+  font-size: 1.85em;
+}
+.tiptap h2 {
+  font-size: 1.5em;
+}
+.tiptap h3 {
+  font-size: 1.24em;
+}
+.tiptap h4 {
+  font-size: 1.08em;
+}
+.tiptap h5,
+.tiptap h6 {
+  font-size: 1em;
+  color: var(--text-2);
+}
+/* 标题锚点指引 */
+.tiptap h1::before,
+.tiptap h2::before,
+.tiptap h3::before {
+  content: '';
+  display: inline-block;
+  width: 0.12em;
+  height: 0.86em;
+  margin-right: 0.42em;
+  vertical-align: -0.06em;
+  border-radius: 2px;
+  background: var(--accent);
+  opacity: 0.42;
+}
+
+/* ---------- 正文 ---------- */
+.tiptap p {
+  margin: 0;
+  color: var(--text);
+}
+
+/* ---------- 行内标记 ---------- */
+.tiptap strong {
+  font-weight: 660;
+}
+.tiptap em {
+  font-style: italic;
+}
+.tiptap s {
+  text-decoration-thickness: 1.5px;
+  text-decoration-color: var(--text-3);
+}
+.tiptap u {
+  text-decoration: underline;
+  text-decoration-thickness: 1.5px;
+  text-underline-offset: 3px;
+}
+.tiptap mark {
+  background: var(--mark);
+  color: inherit;
+  border-radius: 4px;
+  padding: 0.1em 0.22em;
+}
+.tiptap a {
+  color: var(--accent);
+  text-decoration: none;
+  border-bottom: 1px solid var(--accent-ring);
+  cursor: pointer;
+  transition: background 0.14s var(--ease);
+}
+.tiptap a:hover {
+  background: var(--accent-soft);
+  border-radius: 3px;
+}
+.tiptap code {
+  font-family: var(--font-mono);
+  font-size: 0.875em;
+  background: var(--code-bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 0.12em 0.4em;
+  color: var(--tok-key);
+}
+
+/* ---------- 引用 ---------- */
+.tiptap blockquote {
+  margin: 1.3em 0;
+  padding: 0.15em 0 0.15em 1.05em;
+  border-left: 3px solid var(--accent);
+  color: var(--text-2);
+  border-radius: 0 6px 6px 0;
+}
+.tiptap blockquote p {
+  color: var(--text-2);
+}
+
+/* ---------- 列表 ---------- */
+.tiptap ul,
+.tiptap ol {
+  margin: 0.9em 0;
+  padding-left: 1.5em;
+}
+.tiptap li {
+  margin: 0.3em 0;
+}
+.tiptap li::marker {
+  color: var(--text-3);
+}
+.tiptap li > p {
+  margin: 0;
+}
+.tiptap ul ul,
+.tiptap ol ol,
+.tiptap ul ol,
+.tiptap ol ul {
+  margin: 0.25em 0;
+}
+
+/* 任务列表 */
+.tiptap ul[data-type='taskList'] {
+  list-style: none;
+  padding-left: 2px;
+}
+.tiptap ul[data-type='taskList'] li {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin: 0.34em 0;
+}
+.tiptap ul[data-type='taskList'] li > label {
+  flex: 0 0 auto;
+  margin-top: 0.42em;
+  user-select: none;
+}
+.tiptap ul[data-type='taskList'] li > div {
+  flex: 1;
+  min-width: 0;
+}
+/*
+ * 注意：Tiptap 3 的 taskItem 只渲染 data-checked，不带 data-type，
+ * 因此统一用 `ul[data-type='taskList'] li` 作为选择器。
+ */
+.tiptap ul[data-type='taskList'] li input[type='checkbox'] {
+  appearance: none;
+  -webkit-appearance: none;
+  flex: 0 0 auto;
+  width: 16px;
+  height: 16px;
+  border-radius: 5px;
+  border: 1.5px solid var(--border-strong);
+  background-color: var(--surface);
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: 11px 11px;
+  cursor: pointer;
+  transition: background-color 0.15s var(--ease), border-color 0.15s var(--ease);
+}
+.tiptap ul[data-type='taskList'] li input[type='checkbox']:hover {
+  border-color: var(--accent);
+}
+.tiptap ul[data-type='taskList'] li input[type='checkbox']:checked {
+  background-color: var(--accent);
+  border-color: var(--accent);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='%23fff' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3.5 8.4l3 3 6-6.4'/%3E%3C/svg%3E");
+}
+.tiptap ul[data-type='taskList'] li[data-checked='true'] > div {
+  color: var(--text-3);
+  text-decoration: line-through;
+  text-decoration-color: var(--border-strong);
+}
+
+/* ---------- 代码块 ---------- */
+.tiptap .code-block-wrap {
+  position: relative;
+  margin: 1.25em 0;
+}
+.tiptap .code-block-wrap pre {
+  margin: 0;
+  padding-top: 42px;
+}
+.tiptap .code-block-language {
+  position: absolute;
+  top: 8px;
+  right: 9px;
+  z-index: 2;
+}
+.tiptap .code-language-trigger {
+  height: 25px;
+  min-width: 92px;
+  max-width: 138px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 7px;
+  padding: 0 7px 0 9px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--code-bg) 78%, var(--surface));
+  color: var(--text-3);
+  font: 11.5px var(--font-ui);
+  cursor: pointer;
+  transition: border-color 0.14s var(--ease), color 0.14s var(--ease), background 0.14s var(--ease);
+}
+.tiptap .code-language-trigger:hover,
+.tiptap .code-language-trigger.is-open {
+  border-color: var(--accent);
+  color: var(--text);
+  background: var(--surface-2);
+}
+.tiptap .code-language-menu {
+  position: absolute;
+  top: calc(100% + 5px);
+  right: 0;
+  width: 172px;
+  max-height: 248px;
+  overflow-y: auto;
+  padding: 5px;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  background: var(--surface);
+  box-shadow: var(--shadow-lg);
+  animation: pop 0.14s var(--ease);
+}
+.tiptap .code-language-menu button {
+  width: 100%;
+  min-height: 29px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 5px 8px;
+  border-radius: 6px;
+  color: var(--text-2);
+  font: 12px var(--font-ui);
+  text-align: left;
+}
+.tiptap .code-language-menu button:hover {
+  background: var(--surface-2);
+  color: var(--text);
+}
+.tiptap .code-language-menu button.is-active {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+.tiptap pre {
+  margin: 1.25em 0;
+  padding: 15px 17px;
+  background: var(--code-bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow-x: auto;
+  font-family: var(--font-mono);
+  font-size: 13.6px;
+  line-height: 1.7;
+  tab-size: 2;
+}
+.tiptap pre code {
+  background: none;
+  border: none;
+  padding: 0;
+  font-size: inherit;
+  color: var(--text);
+  white-space: pre;
+}
+.tiptap .hljs-comment,
+.tiptap .hljs-quote {
+  color: var(--tok-com);
+  font-style: italic;
+}
+.tiptap .hljs-keyword,
+.tiptap .hljs-selector-tag,
+.tiptap .hljs-literal,
+.tiptap .hljs-doctag {
+  color: var(--tok-key);
+}
+.tiptap .hljs-string,
+.tiptap .hljs-regexp,
+.tiptap .hljs-addition,
+.tiptap .hljs-meta .hljs-string {
+  color: var(--tok-str);
+}
+.tiptap .hljs-number,
+.tiptap .hljs-symbol,
+.tiptap .hljs-bullet,
+.tiptap .hljs-variable,
+.tiptap .hljs-template-variable {
+  color: var(--tok-num);
+}
+.tiptap .hljs-title,
+.tiptap .hljs-title.function_,
+.tiptap .hljs-section,
+.tiptap .hljs-name {
+  color: var(--tok-func);
+}
+.tiptap .hljs-type,
+.tiptap .hljs-class .hljs-title,
+.tiptap .hljs-title.class_ {
+  color: var(--tok-type);
+}
+.tiptap .hljs-attr,
+.tiptap .hljs-attribute,
+.tiptap .hljs-property {
+  color: var(--tok-attr);
+}
+.tiptap .hljs-built_in,
+.tiptap .hljs-builtin-name {
+  color: var(--tok-type);
+}
+.tiptap .hljs-deletion {
+  color: #ef4444;
+}
+.tiptap .hljs-emphasis {
+  font-style: italic;
+}
+.tiptap .hljs-strong {
+  font-weight: 700;
+}
+
+/* ---------- 分割线 ---------- */
+.tiptap hr {
+  margin: 2em 0;
+  border: none;
+  height: 1px;
+  background: linear-gradient(
+    to right,
+    transparent,
+    var(--border-strong) 18%,
+    var(--border-strong) 82%,
+    transparent
+  );
+}
+.tiptap hr.ProseMirror-selectednode {
+  background: var(--accent);
+}
+
+/* ---------- 表格 ---------- */
+.tiptap table {
+  width: 100%;
+  margin: 1.3em 0;
+  border-collapse: separate;
+  border-spacing: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  font-size: 0.94em;
+}
+.tiptap th,
+.tiptap td {
+  border-bottom: 1px solid var(--border);
+  border-right: 1px solid var(--border);
+  padding: 9px 12px;
+  vertical-align: top;
+  position: relative;
+  min-width: 72px;
+}
+.tiptap th:last-child,
+.tiptap td:last-child {
+  border-right: none;
+}
+.tiptap tr:last-child td,
+.tiptap tr:last-child th {
+  border-bottom: none;
+}
+.tiptap th {
+  background: var(--surface-2);
+  font-weight: 620;
+  text-align: left;
+}
+.tiptap td > p,
+.tiptap th > p {
+  margin: 0;
+}
+.tiptap .selectedCell::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: var(--accent-soft);
+  pointer-events: none;
+}
+.tiptap .column-resize-handle {
+  position: absolute;
+  right: -2px;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  background: var(--accent);
+  pointer-events: none;
+  opacity: 0;
+}
+.tiptap.resize-cursor {
+  cursor: col-resize;
+}
+
+/* ---------- 占位符（Tiptap 3 Placeholder 写入 data-placeholder） ---------- */
+.tiptap [data-placeholder]::before {
+  content: attr(data-placeholder);
+  float: left;
+  height: 0;
+  pointer-events: none;
+  color: var(--text-3);
+  font-weight: 400;
+}
+
+/* ---------- 选区 & 拖拽 ---------- */
+.tiptap.ProseMirror-hideselection {
+  caret-color: transparent;
+}
+.tiptap .ProseMirror-selectednode {
+  outline: 2px solid var(--accent-ring);
+  border-radius: 6px;
+}
+.tiptap .ProseMirror-gapcursor::after {
+  border-top-color: var(--accent);
+}
+
+/* ============================================================
+   专注模式（外层 .is-focus 控制）
+   ============================================================ */
+.is-focus .tiptap > * {
+  opacity: 0.3;
+  transition: opacity 0.28s var(--ease);
+}
+.is-focus .tiptap > .has-focus {
+  opacity: 1;
+}
+.is-focus .tiptap > *:has(.has-focus) {
+  opacity: 1;
+}
+
+/* ============================================================
+   空文档引导
+   ============================================================ */
+.doc-hint {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 3.6em;
+  font-size: 13px;
+  color: var(--text-3);
+  pointer-events: none;
+  line-height: 2;
+}
+
+/* ============================================================
+   图片
+   ============================================================ */
+.tiptap img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  margin: 10px 0;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+}
+.tiptap img.ProseMirror-selectednode {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
