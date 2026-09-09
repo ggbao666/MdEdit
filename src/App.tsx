@@ -25,8 +25,7 @@ import type { HeadingItem } from './components/Outline'
 import Settings from './components/Settings'
 import Shortcuts from './components/Shortcuts'
 import Toolbar from './components/Toolbar'
-import appIcon from './assets/mdedit-icon.svg'
-import { APP_NAME, APP_SLUG } from './config/app'
+import { APP_SLUG } from './config/app'
 import { applyTheme, DEFAULT_DARK_THEME, THEMES, type Theme } from './config/themes'
 import { createExtensions, countChars, countWords } from './editor/extensions'
 import { createDropHandler, createPasteHandler } from './editor/imageInput'
@@ -1083,38 +1082,37 @@ export default function App() {
     <div className={'app' + (prefs.focus ? ' is-focus' : '')}>
       {/* 顶栏 */}
       <header className="topbar">
-        <div className="brand">
-          <img className="brand-logo" src={appIcon} alt="" />
-          <span className="brand-name">{APP_NAME}</span>
-        </div>
+        <button
+          type="button"
+          className={'btn topbar-sidebar-toggle' + (prefs.sidebar ? ' is-active' : '')}
+          title="侧栏：文档列表与大纲"
+          onClick={() => setPrefs((p) => ({ ...p, sidebar: !p.sidebar }))}
+        >
+          <PanelLeft size={17} strokeWidth={2} />
+        </button>
 
-        <input
-          ref={titleInputRef}
-          className="doc-title"
-          value={title}
-          placeholder="未命名文档"
-          aria-label="文档标题"
-          onChange={(e) => {
-            const next = e.target.value
-            const id = activeIdRef.current
-            const nextDocs = docsRef.current.map((d) => (d.id === id ? { ...d, title: next } : d))
-            docsRef.current = nextDocs
-            setDocs(nextDocs)
-            scheduleSave()
-          }}
-        />
+        <div className="current-doc" title="当前文档名称，点击即可修改">
+          <input
+            ref={titleInputRef}
+            className="doc-title"
+            value={title}
+            placeholder="未命名文档"
+            aria-label="当前文档名称，点击修改"
+            disabled={!currentDoc}
+            onChange={(e) => {
+              const next = e.target.value
+              const id = activeIdRef.current
+              const nextDocs = docsRef.current.map((d) => (d.id === id ? { ...d, title: next } : d))
+              docsRef.current = nextDocs
+              setDocs(nextDocs)
+              scheduleSave()
+            }}
+          />
+        </div>
 
         <div className="topbar-spacer" />
 
         <div className="topbar-actions">
-          <button
-            type="button"
-            className={'btn' + (prefs.sidebar ? ' is-active' : '')}
-            title="侧栏：文档列表与大纲"
-            onClick={() => setPrefs((p) => ({ ...p, sidebar: !p.sidebar }))}
-          >
-            <PanelLeft size={17} strokeWidth={2} />
-          </button>
           <button
             type="button"
             className={'btn' + (prefs.focus ? ' is-active' : '')}
