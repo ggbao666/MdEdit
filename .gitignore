@@ -5,6 +5,7 @@ release/
 .vite/
 .chrome-smoke/
 .workbuddy/
+.idea/
 coverage/
 
 *.tsbuildinfo
