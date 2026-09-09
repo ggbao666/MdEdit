@@ -2,10 +2,15 @@
 
 在本目录新增一个 `.css` 文件即可自动注册主题，不需要修改 TypeScript 配置。
 
-文件顶部必须包含一行 JSON 元信息：
+文件的 `:root` 中必须包含以下元信息变量：
 
 ```css
-/* @theme {"name":"我的主题","appearance":"dark","description":"主题说明","order":40} */
+:root {
+  --theme-name: "我的主题";
+  --theme-appearance: dark;
+  --theme-description: "主题说明";
+  --theme-order: 40;
+}
 ```
 
 - 文件名就是主题 ID，例如 `my-theme.css` 对应 `my-theme`。

@@ -1,10 +1,11 @@
 {
-  "name": "jianmo",
+  "name": "mdedit",
+  "productName": "MdEdit",
   "private": true,
   "version": "1.0.0",
   "type": "module",
   "main": "dist-electron/main.js",
-  "description": "简墨 — 简洁专注的 Markdown 编辑器（Tiptap 3 + React 19 + Vite）",
+  "description": "A simple, focused Markdown editor built with Tiptap, React, and Vite",
   "scripts": {
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
@@ -57,8 +58,7 @@
     "vite": "8.2.2"
   },
   "build": {
-    "appId": "com.jianmo.app",
-    "productName": "简墨",
+    "appId": "com.mdedit.app",
     "directories": {
       "output": "release"
     },
@@ -68,7 +68,7 @@
       "package.json"
     ],
     "win": {
-      "icon": "build/icon.ico",
+      "icon": "build/icon-offset.ico",
       "target": [
         "nsis",
         "portable"
@@ -77,11 +77,10 @@
     "nsis": {
       "oneClick": false,
       "allowToChangeInstallationDirectory": true,
-      "shortcutName": "简墨",
-      "artifactName": "Jianmo-Setup-${version}-${arch}.${ext}"
+      "artifactName": "${productName}-Setup-${version}-${arch}.${ext}"
     },
     "portable": {
-      "artifactName": "Jianmo-Portable-${version}-${arch}.${ext}"
+      "artifactName": "${productName}-Portable-${version}-${arch}.${ext}"
     }
   }
 }

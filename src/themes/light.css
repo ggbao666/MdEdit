@@ -1,5 +1,8 @@
-/* @theme {"name":"清新亮色","appearance":"light","description":"明亮、柔和，保留青绿色点缀。","order":10} */
 :root {
+  --theme-name: "清新亮色";
+  --theme-appearance: light;
+  --theme-description: "明亮、柔和，保留青绿色点缀。";
+  --theme-order: 10;
   --bg: #f5f8f8;
   --bg-grad: radial-gradient(1200px 600px at 50% -10%, #e8f6f4 0%, #f5f8f8 55%);
   --surface: #ffffff;
@@ -14,6 +17,8 @@
   --accent-hover: #0b8579;
   --accent-soft: rgba(15, 157, 143, 0.1);
   --accent-ring: rgba(15, 157, 143, 0.28);
+  --danger: #dc2626;
+  --danger-hover: #b91c1c;
   --code-bg: #f2f6f6;
   --mark: #d9f5b8;
   --shadow-sm: 0 1px 2px rgba(16, 32, 40, 0.05);

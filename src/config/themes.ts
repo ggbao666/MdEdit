@@ -22,24 +22,29 @@ const themeFiles = import.meta.glob('../themes/*.css', {
   import: 'default',
 }) as Record<string, string>
 
-function parseMetadata(path: string, css: string): ThemeMetadata {
-  const match = css.match(/\/\*\s*@theme\s+(\{[\s\S]*?\})\s*\*\//)
-  if (!match) throw new Error(`主题文件缺少 @theme 元信息：${path}`)
-  const parsed = JSON.parse(match[1]) as Partial<ThemeMetadata>
-  if (!parsed.name || (parsed.appearance !== 'light' && parsed.appearance !== 'dark')) {
-    throw new Error(`主题文件的 name 或 appearance 无效：${path}`)
-  }
-  return {
-    name: parsed.name,
-    appearance: parsed.appearance,
-    description: parsed.description ?? '',
-    order: typeof parsed.order === 'number' ? parsed.order : 100,
-  }
-}
-
 function cssVariable(css: string, name: string, fallback: string): string {
   const match = css.match(new RegExp(`--${name}\\s*:\\s*([^;]+);`))
   return match?.[1]?.trim() || fallback
+}
+
+function unquote(value: string): string {
+  return value.replace(/^["']|["']$/g, '')
+}
+
+function parseMetadata(path: string, css: string): ThemeMetadata {
+  const name = unquote(cssVariable(css, 'theme-name', ''))
+  const appearance = unquote(cssVariable(css, 'theme-appearance', ''))
+  const description = unquote(cssVariable(css, 'theme-description', ''))
+  const orderValue = Number(cssVariable(css, 'theme-order', '100'))
+  if (!name || (appearance !== 'light' && appearance !== 'dark')) {
+    throw new Error(`主题文件的 name 或 appearance 无效：${path}`)
+  }
+  return {
+    name,
+    appearance,
+    description,
+    order: Number.isFinite(orderValue) ? orderValue : 100,
+  }
 }
 
 function definitionFrom(path: string, css: string): ThemeDefinition {

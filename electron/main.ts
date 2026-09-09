@@ -1,8 +1,15 @@
 import { app, BrowserWindow, dialog, ipcMain, Menu, protocol, shell } from 'electron'
+import { readFileSync } from 'node:fs'
 import { mkdir, readFile, readdir, rename, rm, stat, writeFile } from 'node:fs/promises'
 import { basename, dirname, extname, join, resolve, sep } from 'node:path'
 
 const isDev = !app.isPackaged
+const packageInfo = JSON.parse(readFileSync(join(app.getAppPath(), 'package.json'), 'utf8')) as {
+  name: string
+  productName?: string
+}
+const APP_NAME = packageInfo.productName || packageInfo.name
+app.setName(APP_NAME)
 /** 开发态连 vite dev server，生产态读 dist 的静态产物 */
 const DEV_URL = process.env.VITE_DEV_URL ?? 'http://127.0.0.1:5173'
 
@@ -26,8 +33,8 @@ function createWindow(): void {
     height: 860,
     minWidth: 760,
     minHeight: 520,
-    title: '简墨',
-    icon: app.isPackaged ? undefined : join(process.cwd(), 'build', 'icon.ico'),
+    title: APP_NAME,
+    icon: app.isPackaged ? undefined : join(process.cwd(), 'build', 'icon-offset.ico'),
     backgroundColor: '#0f1512',
     autoHideMenuBar: false,
     show: false,
@@ -344,14 +351,8 @@ function buildMenu(): Menu {
           click: () => mainWindow?.webContents.send('menu:shortcuts'),
         },
         {
-          label: '关于简墨',
-          click: () =>
-            dialog.showMessageBox({
-              type: 'info',
-              title: '关于简墨',
-              message: '简墨',
-              detail: '简洁专注的 Markdown 编辑器',
-            }),
+          label: `关于 ${APP_NAME}`,
+          click: () => mainWindow?.webContents.send('menu:about'),
         },
       ],
     },
@@ -626,7 +627,7 @@ ipcMain.on('ws:revealFolder', (_event, root: string, rel: string) => {
 const draftFiles = new Map<string, string>()
 
 function draftsDir(): string {
-  return join(app.getPath('temp'), 'Jianmo', 'drafts')
+  return join(app.getPath('temp'), APP_NAME, 'drafts')
 }
 
 function draftPath(title: string): string {
@@ -637,12 +638,16 @@ function draftPath(title: string): string {
 ipcMain.handle('draft:list', async () => {
   try {
     const currentDir = draftsDir()
-    const legacyDir = join(app.getPath('temp'), 'Tiptora', 'drafts')
+    const legacyDirs = [
+      join(app.getPath('temp'), 'Mdit', 'drafts'),
+      join(app.getPath('temp'), 'Jianmo', 'drafts'),
+      join(app.getPath('temp'), 'Tiptora', 'drafts'),
+    ]
     await mkdir(currentDir, { recursive: true })
     const drafts: Array<{ id: string; title: string; content: string; mtime: number }> = []
     const seenTitles = new Set<string>()
 
-    for (const dir of [currentDir, legacyDir]) {
+    for (const dir of [currentDir, ...legacyDirs]) {
       let entries
       try {
         entries = await readdir(dir, { withFileTypes: true })

@@ -59,7 +59,7 @@ export function docsToZipBlob(docs: DocRecord[], entryName?: (doc: DocRecord) =>
   })
 
   // 加一个清单，方便人工核对导出了哪些文件
-  const index = ['# 简墨导出清单', '']
+  const index = ['# Markdown 文档导出清单', '']
   docs.forEach((doc, i) => {
     index.push(`- ${doc.title || '未命名文档'} → \`${names[i]}\``)
   })

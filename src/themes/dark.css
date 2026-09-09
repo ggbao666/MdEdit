@@ -1,5 +1,8 @@
-/* @theme {"name":"青墨深色","appearance":"dark","description":"原有深色主题，带青绿色光晕和明显层级。","order":20} */
 :root {
+  --theme-name: "青墨深色";
+  --theme-appearance: dark;
+  --theme-description: "原有深色主题，带青绿色光晕和明显层级。";
+  --theme-order: 20;
   --bg: #12161a;
   --bg-grad: radial-gradient(1200px 600px at 50% -10%, #16302f 0%, #12161a 55%);
   --surface: #1a1f24;
@@ -14,6 +17,8 @@
   --accent-hover: #5eead4;
   --accent-soft: rgba(45, 212, 191, 0.13);
   --accent-ring: rgba(45, 212, 191, 0.3);
+  --danger: #f87171;
+  --danger-hover: #ef4444;
   --code-bg: #171c21;
   --mark: rgba(163, 230, 53, 0.22);
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);

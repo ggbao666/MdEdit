@@ -1,4 +1,3 @@
-import sampleMarkdown from '../assets/sample.md?raw'
 import { DEFAULT_DARK_THEME, DEFAULT_LIGHT_THEME, isTheme, type Theme } from '../config/themes'
 
 export type SaveState = 'idle' | 'dirty' | 'saving' | 'saved'
@@ -17,9 +16,6 @@ export interface DocRecord {
   createdAt: number
   updatedAt: number
 }
-
-/** 首次在工作区里生成的示例文档（原始 Markdown，交给 marked 解析） */
-export const SAMPLE_MD: string = sampleMarkdown
 
 /* ============================================================
    工具
@@ -135,13 +131,6 @@ export interface Prefs {
    * - inline：原图转 base64 内联进文档，单文件自包含
    */
   imageMode: 'file' | 'inline'
-  /**
-   * 启动行为：
-   * - ask：有上次目录就先问一句（默认）
-   * - last：直接打开上次的目录
-   * - none：不打开任何目录，直接进空白文档
-   */
-  startup: 'ask' | 'last' | 'none'
   /** 是否在停止输入后自动写回 Markdown 文件 */
   autoSave: boolean
   /** 自动保存防抖延迟（毫秒） */
@@ -159,7 +148,6 @@ const DEFAULT_PREFS: Prefs = {
   typewriter: false,
   panel: 'docs',
   imageMode: 'file',
-  startup: 'ask',
   autoSave: true,
   autoSaveDelay: 700,
   assetDir: '{name}.assets',
@@ -172,17 +160,13 @@ export function loadPrefs(): Prefs {
     const parsed = JSON.parse(raw) as Partial<Prefs>
     const panel = parsed.panel === 'docs' || parsed.panel === 'outline' ? parsed.panel : DEFAULT_PREFS.panel
     const imageMode = parsed.imageMode === 'inline' ? 'inline' : 'file'
-    const startup =
-      parsed.startup === 'last' || parsed.startup === 'none' || parsed.startup === 'ask'
-        ? parsed.startup
-        : DEFAULT_PREFS.startup
     const autoSave = typeof parsed.autoSave === 'boolean' ? parsed.autoSave : DEFAULT_PREFS.autoSave
     const autoSaveDelay =
       typeof parsed.autoSaveDelay === 'number' && Number.isFinite(parsed.autoSaveDelay)
         ? Math.min(60_000, Math.max(100, Math.round(parsed.autoSaveDelay)))
         : DEFAULT_PREFS.autoSaveDelay
     const assetDir = typeof parsed.assetDir === 'string' && parsed.assetDir.trim() ? parsed.assetDir : DEFAULT_PREFS.assetDir
-    return { ...DEFAULT_PREFS, ...parsed, panel, imageMode, startup, autoSave, autoSaveDelay, assetDir }
+    return { ...DEFAULT_PREFS, ...parsed, panel, imageMode, autoSave, autoSaveDelay, assetDir }
   } catch {
     return DEFAULT_PREFS
   }

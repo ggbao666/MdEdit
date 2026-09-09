@@ -81,7 +81,7 @@ export default function Settings({
             <div className="set-group-title">目录</div>
 
             {roots.length === 0 ? (
-              <div className="set-hint">还没有打开目录，文档只存在内存里，关掉就没了。</div>
+              <div className="set-hint">还没有打开目录，文档会先保存在临时草稿中。</div>
             ) : (
               <div className="root-list">
                 {roots.map((dir) => (
@@ -106,40 +106,6 @@ export default function Settings({
               可以同时打开多个目录，侧栏按目录分组显示，每个目录下都能单独新建文档。
             </div>
 
-            <div className="set-row">
-              <span className="set-label">启动方式</span>
-              <div className="seg">
-                <button
-                  type="button"
-                  className={'seg-item' + (prefs.startup === 'ask' ? ' is-active' : '')}
-                  onClick={() => onChange({ startup: 'ask' })}
-                >
-                  询问
-                </button>
-                <button
-                  type="button"
-                  className={'seg-item' + (prefs.startup === 'last' ? ' is-active' : '')}
-                  onClick={() => onChange({ startup: 'last' })}
-                >
-                  打开上次
-                </button>
-                <button
-                  type="button"
-                  className={'seg-item' + (prefs.startup === 'none' ? ' is-active' : '')}
-                  onClick={() => onChange({ startup: 'none' })}
-                >
-                  空白启动
-                </button>
-              </div>
-            </div>
-
-            <div className="set-hint">
-              {prefs.startup === 'ask'
-                ? '每次启动先问一句：接着用上次的目录、换一个，还是不打开直接写。'
-                : prefs.startup === 'last'
-                  ? '启动时直接打开上次用过的目录。'
-                  : '启动后不打开任何目录，直接给你一篇空白文档。'}
-            </div>
           </div>
 
           {/* ---------------- 保存 ---------------- */}

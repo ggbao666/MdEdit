@@ -107,7 +107,7 @@ export default function DocsPanel({
   const [query, setQuery] = useState('')
   const [editingId, setEditingId] = useState<string | null>(null)
   const [draft, setDraft] = useState('')
-  const [pendingId, setPendingId] = useState<string | null>(null)
+  const [deleteDialog, setDeleteDialog] = useState<DocRecord | null>(null)
   const [dragId, setDragId] = useState<string | null>(null)
   const [dropTarget, setDropTarget] = useState<DropTarget | null>(null)
   const [contextMenu, setContextMenu] = useState<DocContextMenu | null>(null)
@@ -125,6 +125,7 @@ export default function DocsPanel({
   const importTargetRef = useRef<{ root: string; dir: string } | null>(null)
   const contextMenuRef = useRef<HTMLDivElement>(null)
   const folderInputRef = useRef<HTMLInputElement>(null)
+  const deleteConfirmRef = useRef<HTMLButtonElement>(null)
 
   const visible = useMemo(() => {
     const q = query.trim().toLowerCase()
@@ -184,6 +185,16 @@ export default function DocsPanel({
   }, [folderDialog])
 
   useEffect(() => {
+    if (!deleteDialog) return
+    requestAnimationFrame(() => deleteConfirmRef.current?.focus())
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setDeleteDialog(null)
+    }
+    document.addEventListener('keydown', onKeyDown)
+    return () => document.removeEventListener('keydown', onKeyDown)
+  }, [deleteDialog])
+
+  useEffect(() => {
     if (!contextMenu) return
     const close = (event: Event) => {
       if (contextMenuRef.current?.contains(event.target as Node)) return
@@ -211,7 +222,6 @@ export default function DocsPanel({
   }
 
   const startEdit = (doc: DocRecord) => {
-    setPendingId(null)
     setEditingId(doc.id)
     setDraft(doc.title)
   }
@@ -257,7 +267,6 @@ export default function DocsPanel({
   const renderItem = (doc: DocRecord) => {
     const isActive = doc.id === activeId
     const isEditing = doc.id === editingId
-    const isPending = doc.id === pendingId
     const isDragging = doc.id === dragId
     const dropHere = dropTarget?.id === doc.id ? dropTarget.position : null
 
@@ -270,7 +279,7 @@ export default function DocsPanel({
           (isDragging ? ' is-dragged' : '') +
           (dropHere ? ` is-drop-${dropHere}` : '')
         }
-        draggable={draggable && !isEditing && !isPending}
+        draggable={draggable && !isEditing}
         onDragStart={(e) => {
           dragIdRef.current = doc.id
           setDragId(doc.id)
@@ -296,7 +305,7 @@ export default function DocsPanel({
           handleDrop()
         }}
         onClick={() => {
-          if (!isEditing && !isPending) onSelect(doc.id)
+          if (!isEditing) onSelect(doc.id)
         }}
         onDoubleClick={() => startEdit(doc)}
         onContextMenu={(e) => {
@@ -341,69 +350,39 @@ export default function DocsPanel({
 
         {!isEditing && (
           <div className="doclist-actions">
-            {isPending ? (
-              <>
-                <button
-                  type="button"
-                  className="doclist-act is-danger"
-                  title="确认删除"
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    setPendingId(null)
-                    onDelete(doc.id)
-                  }}
-                >
-                  删除
-                </button>
-                <button
-                  type="button"
-                  className="doclist-act"
-                  title="取消"
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    setPendingId(null)
-                  }}
-                >
-                  取消
-                </button>
-              </>
-            ) : (
-              <>
-                <button
-                  type="button"
-                  className="doclist-act"
-                  title="重命名（也可双击文件名）"
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    startEdit(doc)
-                  }}
-                >
-                  <Pencil size={12.5} strokeWidth={2} />
-                </button>
-                <button
-                  type="button"
-                  className="doclist-act"
-                  title="创建副本"
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    onDuplicate(doc.id)
-                  }}
-                >
-                  <Copy size={12.5} strokeWidth={2} />
-                </button>
-                <button
-                  type="button"
-                  className="doclist-act"
-                  title="删除这篇文档"
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    setPendingId(doc.id)
-                  }}
-                >
-                  <Trash2 size={12.5} strokeWidth={2} />
-                </button>
-              </>
-            )}
+            <button
+              type="button"
+              className="doclist-act"
+              title="重命名（也可双击文件名）"
+              onClick={(e) => {
+                e.stopPropagation()
+                startEdit(doc)
+              }}
+            >
+              <Pencil size={12.5} strokeWidth={2} />
+            </button>
+            <button
+              type="button"
+              className="doclist-act"
+              title="创建副本"
+              onClick={(e) => {
+                e.stopPropagation()
+                onDuplicate(doc.id)
+              }}
+            >
+              <Copy size={12.5} strokeWidth={2} />
+            </button>
+            <button
+              type="button"
+              className="doclist-act"
+              title="删除这篇文档"
+              onClick={(e) => {
+                e.stopPropagation()
+                setDeleteDialog(doc)
+              }}
+            >
+              <Trash2 size={12.5} strokeWidth={2} />
+            </button>
           </div>
         )}
       </div>
@@ -707,6 +686,44 @@ export default function DocsPanel({
               <div className="folder-dialog-actions">
                 <button type="button" className="btn" onClick={() => setFolderDialog(null)}>取消</button>
                 <button type="button" className="btn btn-primary" onClick={commitFolder}>创建</button>
+              </div>
+            </div>
+          </div>,
+          document.body,
+        )}
+
+      {deleteDialog &&
+        createPortal(
+          <div className="folder-dialog-backdrop" onMouseDown={() => setDeleteDialog(null)}>
+            <div
+              className="folder-dialog delete-dialog"
+              role="alertdialog"
+              aria-modal="true"
+              aria-labelledby="delete-dialog-title"
+              aria-describedby="delete-dialog-description"
+              onMouseDown={(event) => event.stopPropagation()}
+            >
+              <div className="delete-dialog-icon" aria-hidden="true">
+                <Trash2 size={19} strokeWidth={2} />
+              </div>
+              <div className="folder-dialog-title" id="delete-dialog-title">删除文档？</div>
+              <div className="folder-dialog-hint" id="delete-dialog-description">
+                「{deleteDialog.title || '未命名文档'}」将被永久删除，此操作无法撤销。
+              </div>
+              <div className="folder-dialog-actions">
+                <button type="button" className="btn" onClick={() => setDeleteDialog(null)}>取消</button>
+                <button
+                  ref={deleteConfirmRef}
+                  type="button"
+                  className="btn btn-danger"
+                  onClick={() => {
+                    const id = deleteDialog.id
+                    setDeleteDialog(null)
+                    onDelete(id)
+                  }}
+                >
+                  删除
+                </button>
               </div>
             </div>
           </div>,

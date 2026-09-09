@@ -1,5 +1,8 @@
-/* @theme {"name":"极简深色","appearance":"dark","description":"纯色近黑背景、灰蓝点缀与轻量阴影。","order":30} */
 :root {
+  --theme-name: "极简深色";
+  --theme-appearance: dark;
+  --theme-description: "纯色近黑背景、灰蓝点缀与轻量阴影。";
+  --theme-order: 30;
   --bg: #111315;
   --bg-grad: linear-gradient(#111315, #111315);
   --surface: #17191c;
@@ -14,6 +17,8 @@
   --accent-hover: #9aafc2;
   --accent-soft: rgba(130, 153, 174, 0.12);
   --accent-ring: rgba(130, 153, 174, 0.24);
+  --danger: #ef7777;
+  --danger-hover: #e45858;
   --code-bg: #141619;
   --mark: rgba(202, 176, 92, 0.2);
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.22);

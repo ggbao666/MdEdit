@@ -8,13 +8,15 @@
  * 已经开着 dev server 只想重启窗口的话用 `npm run electron:dev`。
  */
 import { spawn, spawnSync } from 'node:child_process'
+import { readFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { createServer } from 'vite'
 import electronPath from 'electron'
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..')
-const log = (msg) => console.log(`\x1b[36m[jianmo]\x1b[0m ${msg}`)
+const { productName } = JSON.parse(readFileSync(join(ROOT, 'package.json'), 'utf8'))
+const log = (msg) => console.log(`\x1b[36m[${productName}]\x1b[0m ${msg}`)
 
 /** 编译 electron/ 下的主进程与 preload，并补上 CJS 标记 */
 function compileMain() {

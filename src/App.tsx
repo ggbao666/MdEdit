@@ -16,6 +16,7 @@ import {
 } from 'lucide-react'
 
 import BubbleBar from './components/BubbleBar'
+import About from './components/About'
 import DocsPanel from './components/DocsPanel'
 import type { DropPosition } from './components/DocsPanel'
 import Launcher from './components/Launcher'
@@ -24,7 +25,8 @@ import type { HeadingItem } from './components/Outline'
 import Settings from './components/Settings'
 import Shortcuts from './components/Shortcuts'
 import Toolbar from './components/Toolbar'
-import appIcon from './assets/jianmo-icon.svg'
+import appIcon from './assets/mdedit-icon-offset.svg'
+import { APP_NAME, APP_SLUG } from './config/app'
 import { applyTheme, DEFAULT_DARK_THEME, THEMES, type Theme } from './config/themes'
 import { createExtensions, countChars, countWords } from './editor/extensions'
 import { createDropHandler, createPasteHandler } from './editor/imageInput'
@@ -105,13 +107,13 @@ export default function App() {
   /** 首屏要异步探测工作区，探测完成前不渲染任何内容 */
   const [booted, setBooted] = useState(false)
   const [showLauncher, setShowLauncher] = useState(false)
-  const [rememberStartup, setRememberStartup] = useState(false)
   const [showSettings, setShowSettings] = useState(false)
   const [stats, setStats] = useState({ words: 0, chars: 0 })
   const [saveState, setSaveState] = useState<SaveState>('idle')
   const [headings, setHeadings] = useState<HeadingItem[]>([])
   const [activeHeading, setActiveHeading] = useState(-1)
   const [showHelp, setShowHelp] = useState(false)
+  const [showAbout, setShowAbout] = useState(false)
   const [toasts, setToasts] = useState<Toast[]>([])
   const [scrollEl, setScrollEl] = useState<HTMLDivElement | null>(null)
 
@@ -120,7 +122,6 @@ export default function App() {
   const titleInputRef = useRef<HTMLInputElement>(null)
   const prefsRef = useRef(prefs)
   const lastRootsRef = useRef<WorkspaceInfo[]>([])
-  const rememberRef = useRef(false)
   const headingsRef = useRef<HeadingItem[]>([])
   const saveTimer = useRef<number | null>(null)
   const dirtyIdsRef = useRef<Set<string>>(new Set())
@@ -135,12 +136,13 @@ export default function App() {
   const pendingTitleFocus = useRef(false)
   /** 编辑器重建后是否聚焦到正文开头（切换 / 删除 / 副本文档时） */
   const pendingEditorFocus = useRef(false)
+  /** StrictMode 会重复执行首次副作用，避免欢迎文档被第二篇空文档覆盖。 */
+  const initialDocumentCreated = useRef(false)
 
   docsRef.current = docs
   activeIdRef.current = activeId
   prefsRef.current = prefs
   lastRootsRef.current = lastRoots
-  rememberRef.current = rememberStartup
 
   const currentDoc = docs.find((d) => d.id === activeId)
   const title = currentDoc?.title ?? '未命名文档'
@@ -516,13 +518,17 @@ export default function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [editor])
 
-  // 首屏：问主进程拿当前状态，按 prefs.startup 决定要不要先问一句
+  // 首屏：刷新页面时沿用已挂载目录；真正冷启动始终显示启动选择页。
   useEffect(() => {
     let cancelled = false
     void (async () => {
       const recovered = await listDraftFiles()
       if (cancelled) return
-      const recoveredDocs = recovered.map((file) => {
+      const meaningfulDrafts = recovered.filter((file) => file.content.trim().length > 0)
+      for (const empty of recovered.filter((file) => file.content.trim().length === 0)) {
+        void removeDraftFile(empty.id)
+      }
+      const recoveredDocs = meaningfulDrafts.map((file) => {
         const record = createMemoryDoc(file.title, markdownToHtml(file.content))
         return { ...record, id: file.id, createdAt: file.mtime, updatedAt: file.mtime }
       })
@@ -537,18 +543,11 @@ export default function App() {
       if (cancelled) return
       setLastRoots(st.last)
 
-      const startup = prefsRef.current.startup
       if (st.roots.length > 0) {
         // 主进程里还挂着目录（比如刚挂载完又刷新了页面），直接接着用
         setRoots(st.roots)
         await loadDocs(st.roots)
-      } else if (st.last.length > 0 && startup === 'last') {
-        for (const dir of st.last) await attachWorkspace(dir.root)
-        const next = await fetchState()
-        if (cancelled) return
-        setRoots(next.roots)
-        await loadDocs(next.roots)
-      } else if (st.last.length > 0 && startup === 'ask') {
+      } else {
         setShowLauncher(true)
       }
       if (!cancelled) setBooted(true)
@@ -561,14 +560,17 @@ export default function App() {
   // 一个目录都没开、列表又空着的时候，给一篇内存文档，保证界面能直接开始写
   useEffect(() => {
     if (!booted || docs.length > 0) return
+    if (showLauncher) return
     if (getRoots().length > 0) return
+    if (initialDocumentCreated.current) return
+    initialDocumentCreated.current = true
     const doc = createMemoryDoc(uniqueTemporaryTitle(docsRef.current))
     docsRef.current = [doc]
     setDocs([doc])
     activeIdRef.current = doc.id
     setActiveId(doc.id)
     void writeDraftFile(doc.id, doc.title, '')
-  }, [booted, docs.length])
+  }, [booted, docs.length, showLauncher])
 
   useEffect(() => {
     applyTheme(theme)
@@ -769,6 +771,9 @@ export default function App() {
       docsRef.current = rest
       setDocs(rest)
 
+      // 删除最后一篇文档后回到起始页，避免只剩空白的编辑器壳层。
+      if (rest.length === 0) setShowLauncher(true)
+
       if (id === activeIdRef.current) {
         // 删掉的是当前文档：切到相邻的那一篇
         const next = rest[Math.min(index, rest.length - 1)]
@@ -847,36 +852,45 @@ export default function App() {
     if (list) pushToast(`已打开 ${list[list.length - 1]?.name ?? '目录'}`)
   }, [attachRoot, flushSave, pushToast])
 
-  const handleOpenFile = useCallback(async () => {
+  const handleOpenFile = useCallback(async (): Promise<boolean> => {
     flushSave()
     const opened = await openDocFile()
-    if (!opened) return
+    if (!opened) return false
     setRoots(opened.state.roots)
     await loadDocs(opened.state.roots, `${opened.file.root}|${opened.file.path}`)
     pendingEditorFocus.current = true
     pushToast(`已打开 ${opened.file.path}`)
+    return true
   }, [flushSave, loadDocs, pushToast])
 
-  /** 启动面板的三个出口 */
+  /** 启动选择页的四个出口 */
   const finishLaunch = useCallback(
-    async (action: 'last' | 'other' | 'none') => {
-      setShowLauncher(false)
-      if (rememberRef.current) setPrefs((p) => ({ ...p, startup: action === 'none' ? 'none' : 'last' }))
-
-      if (action === 'none') return
+    async (action: 'last' | 'folder' | 'file' | 'blank') => {
+      if (action === 'blank') {
+        setShowLauncher(false)
+        createDoc(null)
+        return
+      }
 
       if (action === 'last') {
         for (const dir of lastRootsRef.current) await attachWorkspace(dir.root)
         const st = await fetchState()
-        if (st.roots.length === 0) pushToast('这个目录已经不存在了')
+        if (st.roots.length === 0) {
+          pushToast('上次的目录已经不存在了')
+          return
+        }
         setRoots(st.roots)
         await loadDocs(st.roots)
-      } else {
-        await attachRoot(null)
+      } else if (action === 'folder') {
+        const list = await attachRoot(null)
+        if (!list) return
+      } else if (!(await handleOpenFile())) {
+        return
       }
+      setShowLauncher(false)
       pendingEditorFocus.current = true
     },
-    [attachRoot, loadDocs],
+    [attachRoot, createDoc, handleOpenFile, loadDocs, pushToast],
   )
 
   const handleExport = useCallback(async () => {
@@ -907,7 +921,7 @@ export default function App() {
       flushSave()
       const blob = docsToZipBlob(list)
       const stamp = new Date().toISOString().slice(0, 10)
-      const name = `jianmo-docs-${stamp}.zip`
+      const name = `${APP_SLUG}-docs-${stamp}.zip`
       if (await saveBlobNative(name, blob)) pushToast(`已导出 ${list.length} 篇文档为 ZIP`)
     } catch {
       pushToast('导出失败，请重试')
@@ -1044,6 +1058,7 @@ export default function App() {
       onMenuAction('export-zip', () => void handleExportAll()),
       onMenuAction('open-folder', () => void handleOpenFolder()),
       onMenuAction('shortcuts', () => setShowHelp(true)),
+      onMenuAction('about', () => setShowAbout(true)),
     ]
     return () => offs.forEach((off) => off())
   }, [createDoc, handleExport, handleExportAll, handleOpenFile, handleOpenFolder])
@@ -1070,7 +1085,7 @@ export default function App() {
       <header className="topbar">
         <div className="brand">
           <img className="brand-logo" src={appIcon} alt="" />
-          <span className="brand-name">简墨</span>
+          <span className="brand-name">{APP_NAME}</span>
         </div>
 
         <input
@@ -1272,6 +1287,7 @@ export default function App() {
 
       {/* 浮层 */}
       <BubbleBar editor={editor} scrollEl={scrollEl} />
+      {showAbout && <About onClose={() => setShowAbout(false)} />}
       {showHelp && <Shortcuts onClose={() => setShowHelp(false)} />}
       {showSettings && (
         <Settings
@@ -1287,11 +1303,10 @@ export default function App() {
       {showLauncher && (
         <Launcher
           last={lastRoots}
-          remember={rememberStartup}
-          onRemember={setRememberStartup}
           onOpenLast={() => void finishLaunch('last')}
-          onOpenOther={() => void finishLaunch('other')}
-          onSkip={() => void finishLaunch('none')}
+          onOpenFolder={() => void finishLaunch('folder')}
+          onOpenFile={() => void finishLaunch('file')}
+          onNewBlank={() => void finishLaunch('blank')}
         />
       )}
 
