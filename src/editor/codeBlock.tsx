@@ -20,7 +20,7 @@ function CodeBlockView({ node, updateAttributes }: NodeViewProps) {
   }, [open])
 
   return (
-    <NodeViewWrapper className="code-block-wrap">
+    <NodeViewWrapper className={'code-block-wrap' + (open ? ' is-language-menu-open' : '')}>
       <div ref={menuRef} className="code-block-language" contentEditable={false}>
         <button
           type="button"
@@ -33,7 +33,7 @@ function CodeBlockView({ node, updateAttributes }: NodeViewProps) {
           onClick={() => setOpen((value) => !value)}
         >
           <span>{selected.label}</span>
-          <ChevronDown size={12} strokeWidth={2} />
+          <ChevronDown size={10} strokeWidth={2} />
         </button>
         {open && (
           <div className="code-language-menu" role="menu">

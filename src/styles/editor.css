@@ -212,30 +212,35 @@
   position: relative;
   margin: 1.25em 0;
 }
+.tiptap .code-block-wrap.is-language-menu-open {
+  z-index: 20;
+}
 .tiptap .code-block-wrap pre {
   margin: 0;
-  padding-top: 42px;
+  padding-top: 34px;
 }
 .tiptap .code-block-language {
   position: absolute;
-  top: 8px;
-  right: 9px;
+  top: 7px;
+  right: 8px;
   z-index: 2;
 }
 .tiptap .code-language-trigger {
-  height: 25px;
-  min-width: 92px;
-  max-width: 138px;
+  height: 22px;
+  min-width: 76px;
+  max-width: 120px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 7px;
-  padding: 0 7px 0 9px;
-  border: 1px solid var(--border);
-  border-radius: 6px;
+  gap: 4px;
+  padding: 0 5px 0 7px;
+  border: 1px solid color-mix(in srgb, var(--border) 78%, transparent);
+  border-radius: 5px;
   background: color-mix(in srgb, var(--code-bg) 78%, var(--surface));
   color: var(--text-3);
-  font: 11.5px var(--font-ui);
+  font-family: var(--font-sans);
+  font-size: 10px;
+  line-height: 1.2;
   cursor: pointer;
   transition: border-color 0.14s var(--ease), color 0.14s var(--ease), background 0.14s var(--ease);
 }
@@ -257,6 +262,7 @@
   border-radius: 9px;
   background: var(--surface);
   box-shadow: var(--shadow-lg);
+  z-index: 21;
   animation: pop 0.14s var(--ease);
 }
 .tiptap .code-language-menu button {
@@ -269,7 +275,9 @@
   padding: 5px 8px;
   border-radius: 6px;
   color: var(--text-2);
-  font: 12px var(--font-ui);
+  font-family: var(--font-sans);
+  font-size: 12px;
+  line-height: 1.4;
   text-align: left;
 }
 .tiptap .code-language-menu button:hover {
