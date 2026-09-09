@@ -152,6 +152,13 @@ textarea {
   background: var(--surface);
   box-shadow: 0 0 0 3px var(--accent-soft);
 }
+.current-doc.is-readonly {
+  border-color: color-mix(in srgb, var(--accent) 38%, var(--border));
+  background: color-mix(in srgb, var(--accent-soft) 45%, var(--surface-2));
+}
+.current-doc.is-readonly .doc-title {
+  cursor: default;
+}
 .doc-title {
   width: 100%;
   min-width: 0;
@@ -280,6 +287,11 @@ textarea {
   flex-wrap: wrap;
   justify-content: center;
 }
+.toolbar.is-readonly .toolbar-inner {
+  opacity: 0.42;
+  pointer-events: none;
+  user-select: none;
+}
 
 .tool-group {
   display: flex;
@@ -374,6 +386,7 @@ textarea {
    侧栏（大纲）
    ============================================================ */
 .sidebar {
+  position: relative;
   flex: 0 0 var(--sidebar-w);
   width: var(--sidebar-w);
   border-right: 1px solid var(--border);
@@ -387,6 +400,37 @@ textarea {
   margin-left: calc(var(--sidebar-w) * -1);
   opacity: 0;
   pointer-events: none;
+}
+.sidebar-resizer {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 12;
+  width: 6px;
+  cursor: col-resize;
+  touch-action: none;
+  outline: none;
+}
+.sidebar-resizer::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 2px;
+  background: transparent;
+  transition: background 0.14s var(--ease);
+}
+.sidebar-resizer:hover::after,
+.sidebar-resizer:focus-visible::after,
+.app.is-resizing-sidebar .sidebar-resizer::after {
+  background: var(--accent);
+}
+.app.is-resizing-sidebar,
+.app.is-resizing-sidebar * {
+  cursor: col-resize !important;
+  user-select: none !important;
 }
 
 /* ---------- 侧栏：文档 / 大纲 分段切换 ---------- */
@@ -592,8 +636,15 @@ textarea {
   padding: 0 4px 0 0;
   border-radius: var(--radius-sm);
   color: var(--text-3);
+  cursor: pointer;
 }
 .docgroup-head:hover {
+  background: var(--surface-2);
+}
+.docgroup-head:focus-visible,
+.docfolder-head:focus-visible {
+  outline: 1px solid var(--accent);
+  outline-offset: -1px;
   background: var(--surface-2);
 }
 .docgroup-toggle {
@@ -686,6 +737,7 @@ textarea {
   padding-right: 4px;
   border-radius: var(--radius-sm);
   color: var(--text-3);
+  cursor: pointer;
 }
 .docfolder-head:hover {
   background: var(--surface-2);

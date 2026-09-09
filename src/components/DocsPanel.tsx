@@ -432,6 +432,18 @@ export default function DocsPanel({
         <div
           className="docfolder-head"
           style={{ paddingLeft: 5 + depth * 14 }}
+          role="button"
+          tabIndex={0}
+          aria-expanded={!isCollapsed}
+          onClick={(event) => {
+            if ((event.target as HTMLElement).closest('button')) return
+            toggleGroup(key)
+          }}
+          onKeyDown={(event) => {
+            if (event.key !== 'Enter' && event.key !== ' ') return
+            event.preventDefault()
+            toggleGroup(key)
+          }}
           onContextMenu={(event) => openFolderContext(event, root, node.path, node.name)}
         >
           <button
@@ -534,6 +546,18 @@ export default function DocsPanel({
               <div className="docgroup" key={group.key}>
                 <div
                   className="docgroup-head"
+                  role="button"
+                  tabIndex={0}
+                  aria-expanded={!isCollapsed}
+                  onClick={(event) => {
+                    if ((event.target as HTMLElement).closest('button')) return
+                    toggleGroup(group.key)
+                  }}
+                  onKeyDown={(event) => {
+                    if (event.key !== 'Enter' && event.key !== ' ') return
+                    event.preventDefault()
+                    toggleGroup(group.key)
+                  }}
                   onContextMenu={(event) => openFolderContext(event, group.root, '', group.name)}
                 >
                   <button

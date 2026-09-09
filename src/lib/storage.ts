@@ -121,8 +121,12 @@ const KEY_ORDER = 'tiptora:order'
 
 export interface Prefs {
   sidebar: boolean
+  /** 侧栏宽度（像素），可拖拽调整 */
+  sidebarWidth: number
   focus: boolean
   typewriter: boolean
+  /** 只读模式：锁定正文、标题和格式工具 */
+  readOnly: boolean
   /** 侧栏当前视图：文档列表 or 大纲 */
   panel: 'docs' | 'outline'
   /**
@@ -144,8 +148,10 @@ export interface Prefs {
 
 const DEFAULT_PREFS: Prefs = {
   sidebar: true,
+  sidebarWidth: 248,
   focus: false,
   typewriter: false,
+  readOnly: false,
   panel: 'docs',
   imageMode: 'file',
   autoSave: true,
@@ -161,12 +167,17 @@ export function loadPrefs(): Prefs {
     const panel = parsed.panel === 'docs' || parsed.panel === 'outline' ? parsed.panel : DEFAULT_PREFS.panel
     const imageMode = parsed.imageMode === 'inline' ? 'inline' : 'file'
     const autoSave = typeof parsed.autoSave === 'boolean' ? parsed.autoSave : DEFAULT_PREFS.autoSave
+    const sidebarWidth =
+      typeof parsed.sidebarWidth === 'number' && Number.isFinite(parsed.sidebarWidth)
+        ? Math.min(480, Math.max(180, Math.round(parsed.sidebarWidth)))
+        : DEFAULT_PREFS.sidebarWidth
+    const readOnly = typeof parsed.readOnly === 'boolean' ? parsed.readOnly : DEFAULT_PREFS.readOnly
     const autoSaveDelay =
       typeof parsed.autoSaveDelay === 'number' && Number.isFinite(parsed.autoSaveDelay)
         ? Math.min(60_000, Math.max(100, Math.round(parsed.autoSaveDelay)))
         : DEFAULT_PREFS.autoSaveDelay
     const assetDir = typeof parsed.assetDir === 'string' && parsed.assetDir.trim() ? parsed.assetDir : DEFAULT_PREFS.assetDir
-    return { ...DEFAULT_PREFS, ...parsed, panel, imageMode, autoSave, autoSaveDelay, assetDir }
+    return { ...DEFAULT_PREFS, ...parsed, panel, imageMode, autoSave, autoSaveDelay, assetDir, sidebarWidth, readOnly }
   } catch {
     return DEFAULT_PREFS
   }

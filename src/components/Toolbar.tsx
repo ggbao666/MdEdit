@@ -35,6 +35,7 @@ interface ToolProps {
 
 interface ToolbarProps extends ToolProps {
   onInsertImage: () => void
+  readOnly: boolean
 }
 
 function ToolButton({
@@ -268,7 +269,7 @@ function LinkControl({ editor }: ToolProps) {
   )
 }
 
-export default function Toolbar({ editor, onInsertImage }: ToolbarProps) {
+export default function Toolbar({ editor, onInsertImage, readOnly }: ToolbarProps) {
   const icon = { size: 16, strokeWidth: 2 } as const
 
   // Editor 实例本身不会随光标移动而改变；订阅事务才能及时刷新
@@ -279,7 +280,7 @@ export default function Toolbar({ editor, onInsertImage }: ToolbarProps) {
   })
 
   return (
-    <div className="toolbar">
+    <div className={'toolbar' + (readOnly ? ' is-readonly' : '')} aria-disabled={readOnly}>
       <div className="toolbar-inner">
         <Group>
           <ToolButton title="撤销 (Ctrl/⌘ + Z)" disabled={!editor.can().undo()} onClick={() => editor.chain().focus().undo().run()}>

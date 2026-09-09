@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import type { CSSProperties, PointerEvent as ReactPointerEvent } from 'react'
 import { EditorContent, useEditor } from '@tiptap/react'
 import type { Editor } from '@tiptap/react'
 import {
@@ -7,6 +8,7 @@ import {
   FileText,
   Focus as FocusIcon,
   Keyboard,
+  Lock,
   Moon,
   MoveVertical,
   PanelLeft,
@@ -115,6 +117,7 @@ export default function App() {
   const [showAbout, setShowAbout] = useState(false)
   const [toasts, setToasts] = useState<Toast[]>([])
   const [scrollEl, setScrollEl] = useState<HTMLDivElement | null>(null)
+  const [resizingSidebar, setResizingSidebar] = useState(false)
 
   /* ---------------- 引用 ---------------- */
   const scrollElRef = useRef<HTMLDivElement | null>(null)
@@ -137,6 +140,7 @@ export default function App() {
   const pendingEditorFocus = useRef(false)
   /** StrictMode 会重复执行首次副作用，避免欢迎文档被第二篇空文档覆盖。 */
   const initialDocumentCreated = useRef(false)
+  const sidebarResizeRef = useRef({ startX: 0, startWidth: 248 })
 
   docsRef.current = docs
   activeIdRef.current = activeId
@@ -436,7 +440,7 @@ export default function App() {
   const insertImages = useCallback(
     async (files: File[]) => {
       const ed = editorRef.current
-      if (!ed || ed.isDestroyed || files.length === 0) return
+      if (!ed || ed.isDestroyed || prefsRef.current.readOnly || files.length === 0) return
 
       const target = currentDoc?.root || null
       const toDisk = prefs.imageMode === 'file' && Boolean(target)
@@ -478,6 +482,7 @@ export default function App() {
     {
       extensions: createExtensions(),
       content: currentDoc?.html ?? '<p></p>',
+      editable: !prefsRef.current.readOnly,
       editorProps: {
         attributes: { class: 'tiptap', spellcheck: 'false' },
         handlePaste: createPasteHandler((files) => void insertImages(files)),
@@ -516,6 +521,12 @@ export default function App() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [editor])
+
+  useEffect(() => {
+    if (!editor) return
+    editor.setEditable(!prefs.readOnly)
+    if (prefs.readOnly) editor.commands.blur()
+  }, [editor, prefs.readOnly])
 
   // 首屏：刷新页面时沿用已挂载目录；真正冷启动始终显示启动选择页。
   useEffect(() => {
@@ -1068,6 +1079,30 @@ export default function App() {
     setScrollEl(node)
   }, [])
 
+  const beginSidebarResize = useCallback((event: ReactPointerEvent<HTMLDivElement>) => {
+    if (event.button !== 0) return
+    event.preventDefault()
+    sidebarResizeRef.current = { startX: event.clientX, startWidth: prefsRef.current.sidebarWidth }
+    event.currentTarget.setPointerCapture(event.pointerId)
+    setResizingSidebar(true)
+  }, [])
+
+  const resizeSidebar = useCallback((event: ReactPointerEvent<HTMLDivElement>) => {
+    if (!event.currentTarget.hasPointerCapture(event.pointerId)) return
+    const availableMax = Math.max(180, Math.min(480, window.innerWidth - 360))
+    const next = Math.round(
+      Math.min(availableMax, Math.max(180, sidebarResizeRef.current.startWidth + event.clientX - sidebarResizeRef.current.startX)),
+    )
+    setPrefs((current) => (current.sidebarWidth === next ? current : { ...current, sidebarWidth: next }))
+  }, [])
+
+  const endSidebarResize = useCallback((event: ReactPointerEvent<HTMLDivElement>) => {
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId)
+    }
+    setResizingSidebar(false)
+  }, [])
+
   const minutes = Math.max(1, Math.round(stats.words / 300))
   const sidebarVisible = prefs.sidebar && !prefs.focus
   const onDisk = Boolean(currentDoc && isOnDisk(currentDoc))
@@ -1079,7 +1114,10 @@ export default function App() {
   if (!booted) return <div className="boot" />
 
   return (
-    <div className={'app' + (prefs.focus ? ' is-focus' : '')}>
+    <div
+      className={'app' + (prefs.focus ? ' is-focus' : '') + (resizingSidebar ? ' is-resizing-sidebar' : '')}
+      style={{ '--sidebar-w': `${prefs.sidebarWidth}px` } as CSSProperties}
+    >
       {/* 顶栏 */}
       <header className="topbar">
         <button
@@ -1091,7 +1129,10 @@ export default function App() {
           <PanelLeft size={17} strokeWidth={2} />
         </button>
 
-        <div className="current-doc" title="当前文档名称，点击即可修改">
+        <div
+          className={'current-doc' + (prefs.readOnly ? ' is-readonly' : '')}
+          title={prefs.readOnly ? '只读模式已开启' : '当前文档名称，点击即可修改'}
+        >
           <input
             ref={titleInputRef}
             className="doc-title"
@@ -1099,8 +1140,10 @@ export default function App() {
             placeholder="未命名文档"
             aria-label="当前文档名称，点击修改"
             disabled={!currentDoc}
-            onChange={(e) => {
-              const next = e.target.value
+              readOnly={prefs.readOnly}
+              onChange={(e) => {
+                if (prefsRef.current.readOnly) return
+                const next = e.target.value
               const id = activeIdRef.current
               const nextDocs = docsRef.current.map((d) => (d.id === id ? { ...d, title: next } : d))
               docsRef.current = nextDocs
@@ -1128,6 +1171,15 @@ export default function App() {
             onClick={() => setPrefs((p) => ({ ...p, typewriter: !p.typewriter }))}
           >
             <MoveVertical size={17} strokeWidth={2} />
+          </button>
+          <button
+            type="button"
+            className={'btn' + (prefs.readOnly ? ' is-active' : '')}
+            title={prefs.readOnly ? '关闭只读模式，允许编辑' : '开启只读模式'}
+            aria-pressed={prefs.readOnly}
+            onClick={() => setPrefs((p) => ({ ...p, readOnly: !p.readOnly }))}
+          >
+            <Lock size={16} strokeWidth={2} />
           </button>
 
           <div className="divider-v" />
@@ -1216,11 +1268,36 @@ export default function App() {
             <Outline items={headings} activeIndex={activeHeading} onJump={jumpTo} />
           )}
 
+          <div
+            className="sidebar-resizer"
+            role="separator"
+            aria-label="调整侧栏宽度"
+            aria-orientation="vertical"
+            aria-valuemin={180}
+            aria-valuemax={480}
+            aria-valuenow={prefs.sidebarWidth}
+            tabIndex={0}
+            title="拖拽调整侧栏宽度，双击恢复默认"
+            onPointerDown={beginSidebarResize}
+            onPointerMove={resizeSidebar}
+            onPointerUp={endSidebarResize}
+            onPointerCancel={endSidebarResize}
+            onDoubleClick={() => setPrefs((p) => ({ ...p, sidebarWidth: 248 }))}
+            onKeyDown={(event) => {
+              if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return
+              event.preventDefault()
+              const delta = event.key === 'ArrowLeft' ? -12 : 12
+              setPrefs((p) => ({ ...p, sidebarWidth: Math.min(480, Math.max(180, p.sidebarWidth + delta)) }))
+            }}
+          />
+
         </aside>
 
         {/* 主编辑区 */}
         <main className="main">
-          {!prefs.focus && <Toolbar editor={editor} onInsertImage={() => imageRef.current?.click()} />}
+          {!prefs.focus && (
+            <Toolbar editor={editor} readOnly={prefs.readOnly} onInsertImage={() => imageRef.current?.click()} />
+          )}
           <div className="scroll-area" ref={setScrollNode}>
             <div className="page">
               <div className="editor-shell">
