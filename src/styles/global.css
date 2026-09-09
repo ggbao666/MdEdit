@@ -12,7 +12,7 @@
   --radius: 12px;
   --radius-lg: 16px;
 
-  --topbar-h: 56px;
+  --topbar-h: 48px;
   --toolbar-h: 46px;
   --status-h: 32px;
 
@@ -132,8 +132,8 @@ textarea {
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  width: clamp(200px, 28vw, 320px);
-  height: 34px;
+  width: 280px;
+  height: 30px;
   display: flex;
   align-items: center;
   padding: 0 10px;
@@ -162,13 +162,13 @@ textarea {
 .doc-title {
   width: 100%;
   min-width: 0;
-  height: 32px;
+  height: 28px;
   border: 0;
   background: transparent;
   padding: 0 4px;
   font-size: 14px;
   font-weight: 400;
-  line-height: 32px;
+  line-height: 28px;
   text-align: center;
   color: var(--accent);
   text-overflow: ellipsis;
@@ -186,24 +186,38 @@ textarea {
 }
 
 .topbar-actions {
+  position: relative;
+  z-index: 2;
   flex: 0 0 auto;
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 2px;
+}
+.topbar-actions .btn {
+  min-width: 28px;
+  padding-inline: 6px;
+}
+.topbar-actions .divider-v {
+  margin-inline: 1px;
 }
 
 @media (max-width: 1000px) {
   .current-doc {
-    position: static;
-    flex: 1 1 auto;
-    width: auto;
-    min-width: 80px;
-    max-width: none;
-    transform: none;
+    position: absolute;
+    left: 50%;
+    flex: none;
+    width: min(280px, calc(100vw - 576px));
+    min-width: 180px;
+    max-width: 280px;
+    transform: translate(-50%, -50%);
   }
 
   .topbar-spacer {
-    display: none;
+    display: block;
+  }
+
+  .topbar-actions {
+    margin-left: 0;
   }
 }
 
