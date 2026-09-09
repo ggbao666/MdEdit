@@ -68,7 +68,7 @@
       "package.json"
     ],
     "win": {
-      "icon": "build/icon-offset.ico",
+      "icon": "build/icon.ico",
       "target": [
         "nsis",
         "portable"

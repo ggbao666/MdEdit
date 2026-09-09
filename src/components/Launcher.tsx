@@ -1,5 +1,5 @@
 import { FilePlus2, FileText, FolderClock, FolderOpen } from 'lucide-react'
-import appIcon from '../assets/mdedit-icon-offset.svg'
+import appIcon from '../assets/mdedit-icon.svg'
 import { APP_NAME } from '../config/app'
 import type { WorkspaceInfo } from '../lib/workspace'
 

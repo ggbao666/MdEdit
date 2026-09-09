@@ -34,7 +34,7 @@ function createWindow(): void {
     minWidth: 760,
     minHeight: 520,
     title: APP_NAME,
-    icon: app.isPackaged ? undefined : join(process.cwd(), 'build', 'icon-offset.ico'),
+    icon: app.isPackaged ? undefined : join(process.cwd(), 'build', 'icon.ico'),
     backgroundColor: '#0f1512',
     autoHideMenuBar: false,
     show: false,

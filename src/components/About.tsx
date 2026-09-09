@@ -1,6 +1,6 @@
 import { X } from 'lucide-react'
 
-import appIcon from '../assets/mdedit-icon-offset.svg'
+import appIcon from '../assets/mdedit-icon.svg'
 import { APP_NAME, APP_VERSION } from '../config/app'
 
 export default function About({ onClose }: { onClose: () => void }) {
