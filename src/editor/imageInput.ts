@@ -9,7 +9,25 @@ import { markdownPasteHandler } from './paste'
 export function createPasteHandler(onFiles: (files: File[]) => void) {
   return (view: EditorView, event: ClipboardEvent): boolean => {
     const files = pickImageFiles(event.clipboardData?.files)
-    if (files.length === 0) return markdownPasteHandler(view, event)
+    if (files.length === 0) {
+      const { selection } = view.state
+      const text = event.clipboardData?.getData('text/plain')
+
+      // A code block is a single text node whose line breaks are significant. Letting the
+      // browser paste rich HTML here can turn every copied line into a separate paragraph,
+      // which moves all but the first line outside the code block.
+      if (
+        text &&
+        selection.$from.parent === selection.$to.parent &&
+        selection.$from.parent.type.name === 'codeBlock'
+      ) {
+        event.preventDefault()
+        view.dispatch(view.state.tr.insertText(text.replace(/\r\n?/g, '\n')).scrollIntoView())
+        return true
+      }
+
+      return markdownPasteHandler(view, event)
+    }
 
     event.preventDefault()
     onFiles(files)
