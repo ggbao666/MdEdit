@@ -63,6 +63,27 @@ function CodeBlockView({ node, updateAttributes }: NodeViewProps) {
 }
 
 export const TiptoraCodeBlock = CodeBlockLowlight.extend({
+  addKeyboardShortcuts() {
+    return {
+      ...this.parent?.(),
+
+      // Tiptap 原生还会在代码块位于整篇文档开头时直接清除格式；
+      // 这里仅收紧这一条：只有代码块已经为空，Backspace 才转为普通段落。
+      Backspace: () => {
+        const { empty, $anchor } = this.editor.state.selection
+
+        if (!empty || $anchor.parent.type.name !== this.name) return false
+        if (!$anchor.parent.textContent.length) return this.editor.commands.clearNodes()
+
+        // 非空代码块首行行首没有可删除的字符，阻止通用 joinBackward
+        // 合并上一段、删除上一空行或把光标移出代码块。
+        if ($anchor.parentOffset === 0) return true
+
+        return false
+      },
+    }
+  },
+
   addNodeView() {
     return ReactNodeViewRenderer(CodeBlockView, { contentDOMElementTag: 'code' })
   },

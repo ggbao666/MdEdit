@@ -440,6 +440,7 @@ export default function DocsPanel({
             toggleGroup(key)
           }}
           onKeyDown={(event) => {
+            if ((event.target as HTMLElement).closest('button')) return
             if (event.key !== 'Enter' && event.key !== ' ') return
             event.preventDefault()
             toggleGroup(key)
@@ -457,6 +458,30 @@ export default function DocsPanel({
           <FolderOpen size={13} strokeWidth={2} className="docgroup-icon" />
           <span className="docgroup-name" title={node.path}>{node.name}</span>
           <span className="docgroup-count">{folderDocCount(node)}</span>
+          <div className="docgroup-actions" role="group" aria-label={`${node.name} 快捷操作`}>
+            <button
+              type="button"
+              title={`在“${node.name}”中新建文档`}
+              aria-label={`在“${node.name}”中新建文档`}
+              onClick={(event) => {
+                event.stopPropagation()
+                onCreate(root, node.path)
+              }}
+            >
+              <Plus size={13} strokeWidth={2.2} />
+            </button>
+            <button
+              type="button"
+              title={`在“${node.name}”中新建文件夹`}
+              aria-label={`在“${node.name}”中新建文件夹`}
+              onClick={(event) => {
+                event.stopPropagation()
+                askForFolder(root, node.path, node.name)
+              }}
+            >
+              <FolderPlus size={13} strokeWidth={2} />
+            </button>
+          </div>
         </div>
         {!isCollapsed && (
           <div className="docfolder-contents">
@@ -554,6 +579,7 @@ export default function DocsPanel({
                     toggleGroup(group.key)
                   }}
                   onKeyDown={(event) => {
+                    if ((event.target as HTMLElement).closest('button')) return
                     if (event.key !== 'Enter' && event.key !== ' ') return
                     event.preventDefault()
                     toggleGroup(group.key)
@@ -573,6 +599,32 @@ export default function DocsPanel({
                     {group.name}
                   </span>
                   <span className="docgroup-count">{count}</span>
+                  {group.root && (
+                    <div className="docgroup-actions" role="group" aria-label={`${group.name} 快捷操作`}>
+                      <button
+                        type="button"
+                        title={`在“${group.name}”中新建文档`}
+                        aria-label={`在“${group.name}”中新建文档`}
+                        onClick={(event) => {
+                          event.stopPropagation()
+                          onCreate(group.root, '')
+                        }}
+                      >
+                        <Plus size={13} strokeWidth={2.2} />
+                      </button>
+                      <button
+                        type="button"
+                        title={`在“${group.name}”中新建文件夹`}
+                        aria-label={`在“${group.name}”中新建文件夹`}
+                        onClick={(event) => {
+                          event.stopPropagation()
+                          askForFolder(group.root, '', group.name)
+                        }}
+                      >
+                        <FolderPlus size={13} strokeWidth={2} />
+                      </button>
+                    </div>
+                  )}
                 </div>
                 {!isCollapsed && (
                   <div className="docgroup-items">

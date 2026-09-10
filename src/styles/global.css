@@ -707,11 +707,13 @@ textarea {
   display: flex;
   align-items: center;
   gap: 1px;
-  opacity: 0;
+  opacity: 0.7;
   transition: opacity 0.14s var(--ease);
 }
 .docgroup-head:hover .docgroup-actions,
-.docgroup-head:focus-within .docgroup-actions {
+.docgroup-head:focus-within .docgroup-actions,
+.docfolder-head:hover .docgroup-actions,
+.docfolder-head:focus-within .docgroup-actions {
   opacity: 1;
 }
 .docgroup-actions button {
@@ -728,6 +730,12 @@ textarea {
 }
 .docgroup-actions button:hover {
   background: var(--surface-3);
+  color: var(--accent);
+}
+.docgroup-actions button:focus-visible {
+  outline: 1px solid var(--accent);
+  outline-offset: -1px;
+  background: var(--accent-soft);
   color: var(--accent);
 }
 .docgroup-items {
@@ -755,10 +763,6 @@ textarea {
 }
 .docfolder-head:hover {
   background: var(--surface-2);
-}
-.docfolder-head:hover .docgroup-actions,
-.docfolder-head:focus-within .docgroup-actions {
-  opacity: 1;
 }
 .docfolder-docs {
   display: flex;
