@@ -1,6 +1,6 @@
 import { app, BrowserWindow, dialog, ipcMain, Menu, protocol, shell } from 'electron'
 import { readFileSync } from 'node:fs'
-import { mkdir, readFile, readdir, rename, rm, stat, writeFile } from 'node:fs/promises'
+import { mkdir, readFile, readdir, rename, rm, rmdir, stat, writeFile } from 'node:fs/promises'
 import { basename, dirname, extname, join, resolve, sep } from 'node:path'
 
 const isDev = !app.isPackaged
@@ -531,6 +531,33 @@ ipcMain.handle('ws:createFolder', async (_event, root: string, parent: string, r
         return null
       }
     }
+  }
+})
+
+ipcMain.handle('ws:removeFolder', async (_event, root: string, rel: string) => {
+  if (!roots.includes(root)) return 'invalid'
+  const safe = safeRel(rel)
+  if (!safe) return 'invalid'
+  const full = absFor(root, safe)
+  if (!full) return 'invalid'
+
+  try {
+    const entries = await readdir(full, { withFileTypes: true })
+    if (entries.some((entry) => entry.isDirectory())) return 'has-subfolders'
+    if (entries.some((entry) => !entry.isFile() || !MD_EXT.includes(extname(entry.name).toLowerCase()))) {
+      return 'has-other-files'
+    }
+
+    // 逐个删除已确认的 Markdown 文件，再删除空目录；避免递归删除误伤随后出现的内容。
+    for (const entry of entries) {
+      const file = absFor(root, `${safe}/${entry.name}`)
+      if (!file) return 'invalid'
+      await rm(file)
+    }
+    await rmdir(full)
+    return 'removed'
+  } catch {
+    return 'failed'
   }
 })
 

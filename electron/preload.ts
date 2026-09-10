@@ -19,6 +19,8 @@ interface FolderMeta {
   name: string
 }
 
+type RemoveFolderResult = 'removed' | 'has-subfolders' | 'has-other-files' | 'invalid' | 'failed'
+
 interface DraftFileMeta {
   id: string
   title: string
@@ -66,6 +68,9 @@ const workspace = {
 
   createFolder: (root: string, parent: string, name: string): Promise<FolderMeta | null> =>
     ipcRenderer.invoke('ws:createFolder', root, parent, name),
+
+  removeFolder: (root: string, path: string): Promise<RemoveFolderResult> =>
+    ipcRenderer.invoke('ws:removeFolder', root, path),
 
   rename: (root: string, from: string, to: string): Promise<DocFileMeta | null> =>
     ipcRenderer.invoke('ws:rename', root, from, to),

@@ -219,6 +219,18 @@ export async function createFolder(root: string, parent: string, name: string): 
   }
 }
 
+export type RemoveFolderResult = 'removed' | 'has-subfolders' | 'has-other-files' | 'invalid' | 'failed'
+
+export async function removeFolder(root: string, path: string): Promise<RemoveFolderResult> {
+  const api = ws()
+  if (!api) return 'failed'
+  try {
+    return await api.removeFolder(root, path)
+  } catch {
+    return 'failed'
+  }
+}
+
 export async function renameDocFile(root: string, from: string, to: string): Promise<DocFileMeta | null> {
   const api = ws()
   if (!api) return null

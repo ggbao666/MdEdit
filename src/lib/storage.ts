@@ -123,6 +123,8 @@ export interface Prefs {
   sidebar: boolean
   /** 侧栏宽度（像素），可拖拽调整 */
   sidebarWidth: number
+  /** 编辑器正文基础字号（像素） */
+  editorFontSize: number
   focus: boolean
   typewriter: boolean
   /** 只读模式：锁定正文、标题和格式工具 */
@@ -149,6 +151,7 @@ export interface Prefs {
 const DEFAULT_PREFS: Prefs = {
   sidebar: true,
   sidebarWidth: 248,
+  editorFontSize: 16.5,
   focus: false,
   typewriter: false,
   readOnly: false,
@@ -171,13 +174,28 @@ export function loadPrefs(): Prefs {
       typeof parsed.sidebarWidth === 'number' && Number.isFinite(parsed.sidebarWidth)
         ? Math.min(480, Math.max(180, Math.round(parsed.sidebarWidth)))
         : DEFAULT_PREFS.sidebarWidth
+    const editorFontSize =
+      typeof parsed.editorFontSize === 'number' && Number.isFinite(parsed.editorFontSize)
+        ? Math.min(24, Math.max(12, Math.round(parsed.editorFontSize * 2) / 2))
+        : DEFAULT_PREFS.editorFontSize
     const readOnly = typeof parsed.readOnly === 'boolean' ? parsed.readOnly : DEFAULT_PREFS.readOnly
     const autoSaveDelay =
       typeof parsed.autoSaveDelay === 'number' && Number.isFinite(parsed.autoSaveDelay)
         ? Math.min(60_000, Math.max(100, Math.round(parsed.autoSaveDelay)))
         : DEFAULT_PREFS.autoSaveDelay
     const assetDir = typeof parsed.assetDir === 'string' && parsed.assetDir.trim() ? parsed.assetDir : DEFAULT_PREFS.assetDir
-    return { ...DEFAULT_PREFS, ...parsed, panel, imageMode, autoSave, autoSaveDelay, assetDir, sidebarWidth, readOnly }
+    return {
+      ...DEFAULT_PREFS,
+      ...parsed,
+      panel,
+      imageMode,
+      autoSave,
+      autoSaveDelay,
+      assetDir,
+      sidebarWidth,
+      editorFontSize,
+      readOnly,
+    }
   } catch {
     return DEFAULT_PREFS
   }

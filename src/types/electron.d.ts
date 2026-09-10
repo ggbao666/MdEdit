@@ -32,6 +32,8 @@ interface FolderMeta {
   name: string
 }
 
+type RemoveFolderResult = 'removed' | 'has-subfolders' | 'has-other-files' | 'invalid' | 'failed'
+
 interface DraftFileMeta {
   id: string
   title: string
@@ -60,6 +62,7 @@ interface TiptoraWorkspaceApi {
   /** 新建文档，自动处理重名；返回实际创建的文件 */
   create: (root: string, title: string, dir?: string) => Promise<DocFileMeta | null>
   createFolder: (root: string, parent: string, name: string) => Promise<FolderMeta | null>
+  removeFolder: (root: string, path: string) => Promise<RemoveFolderResult>
   rename: (root: string, from: string, to: string) => Promise<DocFileMeta | null>
   remove: (root: string, path: string) => Promise<boolean>
   /** 写入二进制资源（图片），自动建目录 + 重名避让；返回最终相对路径 */

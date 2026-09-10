@@ -41,11 +41,30 @@ export function assetRelPath(dir: string, fileName: string): string {
   return cleanDir ? `${cleanDir}/${cleanFile}` : cleanFile
 }
 
-/** 从原始文件名推导安全的文件名，缺扩展名时按 MIME 补一个 */
+let lastImageTimestamp = 0
+
+function imageTimestamp(): string {
+  // 同一毫秒批量插入多张图片时顺延 1ms，确保文件名仍保持纯时间戳格式且不重名。
+  const now = Date.now()
+  lastImageTimestamp = Math.max(now, lastImageTimestamp + 1)
+  const date = new Date(lastImageTimestamp)
+  const pad = (value: number, length = 2) => String(value).padStart(length, '0')
+  return [
+    pad(date.getFullYear(), 4),
+    pad(date.getMonth() + 1),
+    pad(date.getDate()),
+    pad(date.getHours()),
+    pad(date.getMinutes()),
+    pad(date.getSeconds()),
+    pad(date.getMilliseconds(), 3),
+  ].join('')
+}
+
+/** 图片统一命名为 imageyyyyMMddHHmmssSSS，并保留原扩展名。 */
 export function assetFileName(rawName: string, mime: string): string {
-  const withoutDir = rawName.split(/[\\/]/).pop() ?? 'image'
-  const safe = withoutDir.replace(INVALID, '').trim() || `image-${Date.now()}`
-  return /\.[a-z0-9]{2,5}$/i.test(safe) ? safe : `${safe}${extFromMime(mime)}`
+  const withoutDir = rawName.split(/[\\/]/).pop() ?? ''
+  const extension = withoutDir.match(/\.[a-z0-9]{2,5}$/i)?.[0] ?? extFromMime(mime)
+  return `image${imageTimestamp()}${extension.toLowerCase()}`
 }
 
 export function extFromMime(mime: string): string {

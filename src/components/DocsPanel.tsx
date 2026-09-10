@@ -5,6 +5,7 @@ import {
   Copy,
   FileArchive,
   FileText,
+  Folder,
   FolderOpen,
   FolderPlus,
   GripVertical,
@@ -30,6 +31,7 @@ interface Props {
   /** 在指定目录新建；root 为空表示建一篇还没落盘的内存文档 */
   onCreate: (root: string | null, dir?: string) => void
   onCreateFolder: (root: string, parent: string, name: string) => void
+  onDeleteFolder: (root: string, path: string) => void
   onExportFolder: (root: string, path: string) => void
   onRename: (id: string, title: string) => void
   onDelete: (id: string) => void
@@ -56,6 +58,10 @@ interface FolderDialog {
   parentName: string
   name: string
 }
+
+type DeleteDialog =
+  | { kind: 'doc'; doc: DocRecord }
+  | { kind: 'folder'; root: string; path: string; name: string; docCount: number }
 
 interface FolderNode {
   path: string
@@ -96,6 +102,7 @@ export default function DocsPanel({
   onSelect,
   onCreate,
   onCreateFolder,
+  onDeleteFolder,
   onExportFolder,
   onRename,
   onDelete,
@@ -107,7 +114,7 @@ export default function DocsPanel({
   const [query, setQuery] = useState('')
   const [editingId, setEditingId] = useState<string | null>(null)
   const [draft, setDraft] = useState('')
-  const [deleteDialog, setDeleteDialog] = useState<DocRecord | null>(null)
+  const [deleteDialog, setDeleteDialog] = useState<DeleteDialog | null>(null)
   const [dragId, setDragId] = useState<string | null>(null)
   const [dropTarget, setDropTarget] = useState<DropTarget | null>(null)
   const [contextMenu, setContextMenu] = useState<DocContextMenu | null>(null)
@@ -221,6 +228,9 @@ export default function DocsPanel({
     setCollapsed((prev) => (prev.includes(key) ? prev.filter((k) => k !== key) : [...prev, key]))
   }
 
+  const hasNestedFolder = (root: string, path: string) =>
+    folders.some((folder) => folder.root === root && folder.path.startsWith(`${path}/`))
+
   const startEdit = (doc: DocRecord) => {
     setEditingId(doc.id)
     setDraft(doc.title)
@@ -329,6 +339,8 @@ export default function DocsPanel({
           <GripVertical size={12} strokeWidth={2} />
         </span>
 
+        <FileText className="doclist-icon" size={14} strokeWidth={1.8} aria-hidden="true" />
+
         {isEditing ? (
           <input
             ref={inputRef}
@@ -364,21 +376,10 @@ export default function DocsPanel({
             <button
               type="button"
               className="doclist-act"
-              title="创建副本"
-              onClick={(e) => {
-                e.stopPropagation()
-                onDuplicate(doc.id)
-              }}
-            >
-              <Copy size={12.5} strokeWidth={2} />
-            </button>
-            <button
-              type="button"
-              className="doclist-act"
               title="删除这篇文档"
               onClick={(e) => {
                 e.stopPropagation()
-                setDeleteDialog(doc)
+                setDeleteDialog({ kind: 'doc', doc })
               }}
             >
               <Trash2 size={12.5} strokeWidth={2} />
@@ -455,7 +456,7 @@ export default function DocsPanel({
           >
             <ChevronRight size={12} strokeWidth={2.2} />
           </button>
-          <FolderOpen size={13} strokeWidth={2} className="docgroup-icon" />
+          <Folder size={14} strokeWidth={1.8} className="docgroup-icon" />
           <span className="docgroup-name" title={node.path}>{node.name}</span>
           <span className="docgroup-count">{folderDocCount(node)}</span>
           <div className="docgroup-actions" role="group" aria-label={`${node.name} 快捷操作`}>
@@ -594,7 +595,7 @@ export default function DocsPanel({
                   >
                     <ChevronRight size={13} strokeWidth={2.2} />
                   </button>
-                  <FolderOpen size={13} strokeWidth={2} className="docgroup-icon" />
+                  <Folder size={14} strokeWidth={1.8} className="docgroup-icon" />
                   <span className="docgroup-name" title={group.root || '还没保存'}>
                     {group.name}
                   </span>
@@ -651,21 +652,34 @@ export default function DocsPanel({
             onContextMenu={(e) => e.preventDefault()}
           >
             {contextMenu.kind === 'doc' ? (
-              <button
-                type="button"
-                role="menuitem"
-                onClick={() => {
-                  if (contextMenu.doc.root && contextMenu.doc.path) {
-                    revealDocFile(contextMenu.doc.root, contextMenu.doc.path)
-                  } else {
-                    revealDraftFile(contextMenu.doc.id)
-                  }
-                  setContextMenu(null)
-                }}
-              >
-                <FolderOpen size={15} strokeWidth={2} />
-                打开所在目录
-              </button>
+              <>
+                <button
+                  type="button"
+                  role="menuitem"
+                  onClick={() => {
+                    onDuplicate(contextMenu.doc.id)
+                    setContextMenu(null)
+                  }}
+                >
+                  <Copy size={15} strokeWidth={2} />
+                  创建副本
+                </button>
+                <button
+                  type="button"
+                  role="menuitem"
+                  onClick={() => {
+                    if (contextMenu.doc.root && contextMenu.doc.path) {
+                      revealDocFile(contextMenu.doc.root, contextMenu.doc.path)
+                    } else {
+                      revealDraftFile(contextMenu.doc.id)
+                    }
+                    setContextMenu(null)
+                  }}
+                >
+                  <FolderOpen size={15} strokeWidth={2} />
+                  打开所在目录
+                </button>
+              </>
             ) : (
               <>
                 <button
@@ -725,6 +739,37 @@ export default function DocsPanel({
                   <FileArchive size={15} strokeWidth={2} />
                   导出此目录为 ZIP
                 </button>
+                {contextMenu.path !== '' && (
+                  <button
+                    type="button"
+                    role="menuitem"
+                    className="is-danger"
+                    disabled={hasNestedFolder(contextMenu.root, contextMenu.path)}
+                    title={
+                      hasNestedFolder(contextMenu.root, contextMenu.path)
+                        ? '目录中还有子目录，无法删除'
+                        : '删除目录及其中的所有文档'
+                    }
+                    onClick={() => {
+                      const prefix = `${contextMenu.path}/`
+                      setDeleteDialog({
+                        kind: 'folder',
+                        root: contextMenu.root,
+                        path: contextMenu.path,
+                        name: contextMenu.name,
+                        docCount: docs.filter(
+                          (doc) => doc.root === contextMenu.root && doc.path.startsWith(prefix),
+                        ).length,
+                      })
+                      setContextMenu(null)
+                    }}
+                  >
+                    <Trash2 size={15} strokeWidth={2} />
+                    {hasNestedFolder(contextMenu.root, contextMenu.path)
+                      ? '包含子目录，无法删除'
+                      : '删除目录'}
+                  </button>
+                )}
                 {contextMenu.path === '' && (
                   <button
                     type="button"
@@ -782,9 +827,13 @@ export default function DocsPanel({
               <div className="delete-dialog-icon" aria-hidden="true">
                 <Trash2 size={19} strokeWidth={2} />
               </div>
-              <div className="folder-dialog-title" id="delete-dialog-title">删除文档？</div>
+              <div className="folder-dialog-title" id="delete-dialog-title">
+                {deleteDialog.kind === 'doc' ? '删除文档？' : '删除目录？'}
+              </div>
               <div className="folder-dialog-hint" id="delete-dialog-description">
-                「{deleteDialog.title || '未命名文档'}」将被永久删除，此操作无法撤销。
+                {deleteDialog.kind === 'doc'
+                  ? `「${deleteDialog.doc.title || '未命名文档'}」将被永久删除，此操作无法撤销。`
+                  : `「${deleteDialog.name}」及其中 ${deleteDialog.docCount} 篇文档将被永久删除，此操作无法撤销。`}
               </div>
               <div className="folder-dialog-actions">
                 <button type="button" className="btn" onClick={() => setDeleteDialog(null)}>取消</button>
@@ -793,9 +842,10 @@ export default function DocsPanel({
                   type="button"
                   className="btn btn-danger"
                   onClick={() => {
-                    const id = deleteDialog.id
+                    const target = deleteDialog
                     setDeleteDialog(null)
-                    onDelete(id)
+                    if (target.kind === 'doc') onDelete(target.doc.id)
+                    else onDeleteFolder(target.root, target.path)
                   }}
                 >
                   删除

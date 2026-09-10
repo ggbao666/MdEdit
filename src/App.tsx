@@ -51,6 +51,7 @@ import {
   readDocFile,
   removeDraftFile,
   removeDocFile,
+  removeFolder as removeWorkspaceFolder,
   renameDocFile,
   saveDocAs,
   setActiveRoot,
@@ -798,6 +799,48 @@ export default function App() {
     [flushSave, pushToast],
   )
 
+  const deleteFolder = useCallback(
+    async (root: string, path: string) => {
+      const prefix = `${path}/`
+      const targets = docsRef.current.filter((doc) => doc.root === root && doc.path.startsWith(prefix))
+      const targetIds = new Set(targets.map((doc) => doc.id))
+
+      if (!targetIds.has(activeIdRef.current)) flushSave()
+      else if (saveTimer.current !== null) {
+        window.clearTimeout(saveTimer.current)
+        saveTimer.current = null
+      }
+
+      const result = await removeWorkspaceFolder(root, path)
+      if (result !== 'removed') {
+        if (result === 'has-subfolders') pushToast('目录中还有子目录，无法删除')
+        else if (result === 'has-other-files') pushToast('目录中还有非 Markdown 文件，未删除')
+        else pushToast('删除目录失败，请检查目录权限')
+        return
+      }
+
+      targetIds.forEach((id) => dirtyIdsRef.current.delete(id))
+      const activeIndex = docsRef.current.findIndex((doc) => doc.id === activeIdRef.current)
+      const activeWasDeleted = targetIds.has(activeIdRef.current)
+      const rest = docsRef.current.filter((doc) => !targetIds.has(doc.id))
+      docsRef.current = rest
+      setDocs(rest)
+      setFolders((prev) => prev.filter((folder) => !(folder.root === root && folder.path === path)))
+
+      if (rest.length === 0) setShowLauncher(true)
+      if (activeWasDeleted) {
+        const next = rest[Math.min(activeIndex, rest.length - 1)]
+        activeIdRef.current = next?.id ?? ''
+        setActiveId(next?.id ?? '')
+        setActiveRoot(next?.root || null)
+        setSaveState(next && dirtyIdsRef.current.has(next.id) ? 'dirty' : 'idle')
+        pendingEditorFocus.current = true
+      }
+      pushToast(`已删除目录及 ${targets.length} 篇文档`)
+    },
+    [flushSave, pushToast],
+  )
+
   /** 拖拽排序：同一目录内把 dragId 移动到 targetId 的前/后 */
   const reorderDocs = useCallback(
     (dragId: string, targetId: string, position: DropPosition) => {
@@ -1116,7 +1159,12 @@ export default function App() {
   return (
     <div
       className={'app' + (prefs.focus ? ' is-focus' : '') + (resizingSidebar ? ' is-resizing-sidebar' : '')}
-      style={{ '--sidebar-w': `${prefs.sidebarWidth}px` } as CSSProperties}
+      style={
+        {
+          '--sidebar-w': `${prefs.sidebarWidth}px`,
+          '--editor-font-size': `${prefs.editorFontSize}px`,
+        } as CSSProperties
+      }
     >
       {/* 顶栏 */}
       <header className="topbar">
@@ -1256,6 +1304,7 @@ export default function App() {
               onSelect={switchTo}
               onCreate={createDoc}
               onCreateFolder={(root, parent, name) => void createFolder(root, parent, name)}
+              onDeleteFolder={(root, path) => void deleteFolder(root, path)}
               onExportFolder={(root, path) => void handleExportFolder(root, path)}
               onRename={renameDoc}
               onDelete={deleteDoc}

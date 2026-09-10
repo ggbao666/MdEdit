@@ -74,6 +74,33 @@ export default function Settings({
                 </button>
               ))}
             </div>
+
+            <div className="set-row">
+              <label className="set-label" htmlFor="editor-font-size">
+                文档字号
+              </label>
+              <div className="set-font-size">
+                <input
+                  id="editor-font-size"
+                  type="range"
+                  min={12}
+                  max={24}
+                  step={0.5}
+                  value={prefs.editorFontSize}
+                  aria-valuetext={`${prefs.editorFontSize} 像素`}
+                  onChange={(event) => onChange({ editorFontSize: Number(event.target.value) })}
+                />
+                <output htmlFor="editor-font-size">{prefs.editorFontSize}px</output>
+                <button
+                  type="button"
+                  className="set-reset"
+                  disabled={prefs.editorFontSize === 16.5}
+                  onClick={() => onChange({ editorFontSize: 16.5 })}
+                >
+                  默认
+                </button>
+              </div>
+            </div>
           </div>
 
           {/* ---------------- 目录 ---------------- */}
