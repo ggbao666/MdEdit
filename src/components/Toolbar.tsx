@@ -7,6 +7,11 @@ import {
   ChevronDown,
   Code,
   CodeXml,
+  Copy,
+  Download,
+  FileCode2,
+  FileLock,
+  FilePenLine,
   Heading1,
   Heading2,
   Heading3,
@@ -35,7 +40,14 @@ interface ToolProps {
 
 interface ToolbarProps extends ToolProps {
   onInsertImage: () => void
+  onToggleSource: () => void
+  onCycleDocumentReadOnly: () => void
+  onCopyMarkdown: () => void
+  onExportMarkdown: () => void
   readOnly: boolean
+  sourceMode: boolean
+  documentReadOnlyOverride: boolean | null
+  hasDocument: boolean
 }
 
 function ToolButton({
@@ -269,7 +281,18 @@ function LinkControl({ editor }: ToolProps) {
   )
 }
 
-export default function Toolbar({ editor, onInsertImage, readOnly }: ToolbarProps) {
+export default function Toolbar({
+  editor,
+  onInsertImage,
+  onToggleSource,
+  onCycleDocumentReadOnly,
+  onCopyMarkdown,
+  onExportMarkdown,
+  readOnly,
+  sourceMode,
+  documentReadOnlyOverride,
+  hasDocument,
+}: ToolbarProps) {
   const icon = { size: 16, strokeWidth: 2 } as const
 
   // Editor 实例本身不会随光标移动而改变；订阅事务才能及时刷新
@@ -282,6 +305,18 @@ export default function Toolbar({ editor, onInsertImage, readOnly }: ToolbarProp
   return (
     <div className={'toolbar' + (readOnly ? ' is-readonly' : '')} aria-disabled={readOnly}>
       <div className="toolbar-inner">
+        {sourceMode ? (
+          <>
+            <span className="source-toolbar-label">Markdown 源码</span>
+            <Sep />
+            <Group>
+              <ToolButton disabled={readOnly} title="插入图片（也可粘贴或拖入）" onClick={onInsertImage}>
+                <ImagePlus {...icon} />
+              </ToolButton>
+            </Group>
+          </>
+        ) : (
+          <>
         <Group>
           <ToolButton title="撤销 (Ctrl/⌘ + Z)" disabled={!editor.can().undo()} onClick={() => editor.chain().focus().undo().run()}>
             <Undo2 {...icon} />
@@ -387,6 +422,45 @@ export default function Toolbar({ editor, onInsertImage, readOnly }: ToolbarProp
             </Group>
           </>
         )}
+          </>
+        )}
+      </div>
+      <div className="toolbar-mode-switch">
+        <ToolButton
+          title={sourceMode ? '返回所见即所得模式 (Ctrl/⌘ + /)' : '切换到 Markdown 源码 (Ctrl/⌘ + /)'}
+          active={sourceMode}
+          onClick={onToggleSource}
+        >
+          <FileCode2 {...icon} />
+        </ToolButton>
+        <ToolButton
+          title={
+            documentReadOnlyOverride === null
+              ? `文档只读：跟随全局（当前${readOnly ? '只读' : '可编辑'}），点击强制只读`
+              : documentReadOnlyOverride
+                ? '文档只读：强制只读，点击改为强制可编辑'
+                : '文档只读：强制可编辑，点击恢复跟随全局'
+          }
+          active={documentReadOnlyOverride !== null}
+          disabled={!hasDocument}
+          onClick={onCycleDocumentReadOnly}
+        >
+          {readOnly ? <FileLock {...icon} /> : <FilePenLine {...icon} />}
+        </ToolButton>
+        <ToolButton
+          title="复制当前文档的 Markdown (Ctrl/⌘ + Shift + C)"
+          disabled={!hasDocument}
+          onClick={onCopyMarkdown}
+        >
+          <Copy {...icon} />
+        </ToolButton>
+        <ToolButton
+          title="导出当前文档为 Markdown (Ctrl/⌘ + Shift + E)"
+          disabled={!hasDocument}
+          onClick={onExportMarkdown}
+        >
+          <Download {...icon} />
+        </ToolButton>
       </div>
     </div>
   )

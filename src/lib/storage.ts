@@ -7,6 +7,10 @@ export interface DocRecord {
   id: string
   title: string
   html: string
+  /** 原始 Markdown；源码模式直接编辑并保存这一份内容 */
+  markdown: string
+  /** null 跟随全局；true 强制只读；false 强制可编辑 */
+  readOnlyOverride: boolean | null
   /** 列表页展示的纯文本摘要，保存时算好，避免渲染时反复解析 HTML */
   excerpt: string
   /** 所属目录的绝对路径；为空表示还没落盘的内存文档 */
@@ -58,13 +62,15 @@ export function formatTime(ts: number): string {
 let memSeq = 0
 
 /** 内存文档：还没有落盘，只在当前会话里存在 */
-export function createMemoryDoc(title = '未命名文档', html = ''): DocRecord {
+export function createMemoryDoc(title = '未命名文档', html = '', markdown = ''): DocRecord {
   memSeq += 1
   const now = Date.now()
   return {
     id: `mem:${memSeq}`,
     title,
     html,
+    markdown,
+    readOnlyOverride: null,
     excerpt: htmlToExcerpt(html),
     root: '',
     path: '',
@@ -73,12 +79,14 @@ export function createMemoryDoc(title = '未命名文档', html = ''): DocRecord
   }
 }
 
-export function createDoc(title = '未命名文档', html = '', root = '', path = ''): DocRecord {
+export function createDoc(title = '未命名文档', html = '', root = '', path = '', markdown = ''): DocRecord {
   const now = Date.now()
   return {
     id: root || path ? `${root}|${path}` : `doc:${now}`,
     title,
     html,
+    markdown,
+    readOnlyOverride: null,
     excerpt: htmlToExcerpt(html),
     root,
     path,
@@ -99,7 +107,10 @@ export function isBlank(html: string): boolean {
 }
 
 /** 把 HTML 同步进记录并刷新摘要与时间戳 */
-export function touchDoc(doc: DocRecord, patch: Partial<Pick<DocRecord, 'title' | 'html'>>): DocRecord {
+export function touchDoc(
+  doc: DocRecord,
+  patch: Partial<Pick<DocRecord, 'title' | 'html' | 'markdown'>>,
+): DocRecord {
   const next = { ...doc, ...patch }
   if (patch.html !== undefined) next.excerpt = htmlToExcerpt(patch.html)
   next.updatedAt = Date.now()
@@ -118,6 +129,7 @@ export function safeFileName(name: string): string {
 const KEY_THEME = 'tiptora:theme'
 const KEY_PREFS = 'tiptora:prefs'
 const KEY_ORDER = 'tiptora:order'
+const KEY_DOC_READ_ONLY = 'tiptora:doc-readonly'
 
 export interface Prefs {
   sidebar: boolean
@@ -125,6 +137,8 @@ export interface Prefs {
   sidebarWidth: number
   /** 编辑器正文基础字号（像素） */
   editorFontSize: number
+  /** 当前编辑模式；切换文档后保持不变 */
+  editorMode: 'rich' | 'source'
   focus: boolean
   typewriter: boolean
   /** 只读模式：锁定正文、标题和格式工具 */
@@ -152,6 +166,7 @@ const DEFAULT_PREFS: Prefs = {
   sidebar: true,
   sidebarWidth: 248,
   editorFontSize: 16.5,
+  editorMode: 'rich',
   focus: false,
   typewriter: false,
   readOnly: false,
@@ -178,6 +193,7 @@ export function loadPrefs(): Prefs {
       typeof parsed.editorFontSize === 'number' && Number.isFinite(parsed.editorFontSize)
         ? Math.min(24, Math.max(12, Math.round(parsed.editorFontSize * 2) / 2))
         : DEFAULT_PREFS.editorFontSize
+    const editorMode = parsed.editorMode === 'source' ? 'source' : 'rich'
     const readOnly = typeof parsed.readOnly === 'boolean' ? parsed.readOnly : DEFAULT_PREFS.readOnly
     const autoSaveDelay =
       typeof parsed.autoSaveDelay === 'number' && Number.isFinite(parsed.autoSaveDelay)
@@ -194,6 +210,7 @@ export function loadPrefs(): Prefs {
       assetDir,
       sidebarWidth,
       editorFontSize,
+      editorMode,
       readOnly,
     }
   } catch {
@@ -207,6 +224,31 @@ export function savePrefs(prefs: Prefs): void {
   } catch {
     /* ignore */
   }
+}
+
+export function loadDocReadOnly(id: string): boolean | null {
+  try {
+    const value = localStorage.getItem(`${KEY_DOC_READ_ONLY}:${id}`)
+    return value === 'true' ? true : value === 'false' ? false : null
+  } catch {
+    return null
+  }
+}
+
+export function saveDocReadOnly(id: string, value: boolean | null): void {
+  try {
+    const key = `${KEY_DOC_READ_ONLY}:${id}`
+    if (value === null) localStorage.removeItem(key)
+    else localStorage.setItem(key, String(value))
+  } catch {
+    /* 忽略本地偏好写入失败 */
+  }
+}
+
+export function moveDocReadOnly(from: string, to: string): void {
+  const value = loadDocReadOnly(from)
+  saveDocReadOnly(to, value)
+  saveDocReadOnly(from, null)
 }
 
 export function loadTheme(): Theme {

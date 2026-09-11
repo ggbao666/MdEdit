@@ -47,6 +47,8 @@ interface TiptoraWorkspaceApi {
   open: () => Promise<WorkspaceState | null>
   /** 打开一个现有 Markdown 文件，并挂载它所在的目录 */
   openFile: () => Promise<{ state: WorkspaceState; file: DocFileMeta } | null>
+  /** 打开拖入窗口的 Markdown 文件，并挂载其所在目录 */
+  openDroppedFile: (file: File) => Promise<{ state: WorkspaceState; file: DocFileMeta } | null>
   /** 让用户选择位置，把临时文档保存为正式 Markdown 文件 */
   saveAs: (suggestedName: string, content: string) => Promise<{ state: WorkspaceState; file: DocFileMeta } | null>
   /** 挂载一个已知目录（用于「打开上次的」） */

@@ -5,6 +5,27 @@
   position: relative;
 }
 
+.source-editor {
+  width: 100%;
+  min-height: calc(100vh - var(--topbar-h) - var(--toolbar-h) - var(--status-h) - 120px);
+}
+
+.source-editor-loading {
+  padding: 12px 4px;
+  color: var(--text-3);
+  font-family: var(--font-mono);
+  font-size: 13px;
+}
+
+.source-editor .cm-editor,
+.source-editor .cm-scroller {
+  min-height: inherit;
+}
+
+.source-editor .cm-scroller {
+  overflow: visible;
+}
+
 .tiptap {
   outline: none;
   font-size: var(--editor-font-size, 16.5px);

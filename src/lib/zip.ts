@@ -49,9 +49,9 @@ export function docsToZipBlob(docs: DocRecord[], entryName?: (doc: DocRecord) =>
   const entries: Record<string, Uint8Array> = {}
 
   docs.forEach((doc, i) => {
-    let md = ''
+    let md = doc.markdown
     try {
-      md = htmlToMarkdown(doc.html)
+      if (!md) md = htmlToMarkdown(doc.html)
     } catch {
       md = ''
     }

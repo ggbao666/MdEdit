@@ -421,6 +421,20 @@ ipcMain.handle('ws:openFile', async () => {
   return file ? { state: next, file } : null
 })
 
+ipcMain.handle('ws:openDroppedFile', async (_event, filePath: unknown) => {
+  if (typeof filePath !== 'string' || !MD_EXT.includes(extname(filePath).toLowerCase())) return null
+  try {
+    const info = await stat(filePath)
+    if (!info.isFile()) return null
+  } catch {
+    return null
+  }
+  const root = dirname(filePath)
+  const next = await attach(root)
+  const file = await toMeta(root, basename(filePath))
+  return file ? { state: next, file } : null
+})
+
 ipcMain.handle('ws:saveAs', async (_event, suggestedName: string, content: string) => {
   const win = BrowserWindow.getFocusedWindow() ?? mainWindow
   const clean = suggestedName.trim().replace(/[\\/:*?"<>|]/g, '') || '未命名文档'

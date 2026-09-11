@@ -40,7 +40,10 @@ const GROUPS: { title: string; items: Shortcut[] }[] = [
       { keys: 'Ctrl/⌘ + Shift + C', desc: '复制 Markdown' },
       { keys: 'Ctrl/⌘ + \\', desc: '折叠 / 展开侧栏' },
       { keys: 'Ctrl/⌘ + ,', desc: '打开设置' },
-      { keys: 'Ctrl/⌘ + /', desc: '打开本面板' },
+      { keys: 'Ctrl/⌘ + /', desc: '切换源码 / 所见即所得模式' },
+      { keys: 'F1', desc: '打开本面板' },
+      { keys: '拖入 .md 文件', desc: '挂载所在目录并以文档只读方式打开' },
+      { keys: '顶部文档锁', desc: '跟随全局 / 强制只读 / 强制可编辑' },
     ],
   },
   {

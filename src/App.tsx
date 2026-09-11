@@ -1,10 +1,8 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { CSSProperties, PointerEvent as ReactPointerEvent } from 'react'
 import { EditorContent, useEditor } from '@tiptap/react'
 import type { Editor } from '@tiptap/react'
 import {
-  Copy,
-  Download,
   FileText,
   Focus as FocusIcon,
   Keyboard,
@@ -26,6 +24,7 @@ import Outline from './components/Outline'
 import type { HeadingItem } from './components/Outline'
 import Settings from './components/Settings'
 import Shortcuts from './components/Shortcuts'
+import type { SourceEditorHandle } from './components/SourceEditor'
 import Toolbar from './components/Toolbar'
 import { APP_SLUG } from './config/app'
 import { applyTheme, DEFAULT_DARK_THEME, THEMES, type Theme } from './config/themes'
@@ -47,6 +46,7 @@ import {
   listDraftFiles,
   listFolders,
   openDocFile,
+  openDroppedDocFile,
   openWorkspace,
   readDocFile,
   removeDraftFile,
@@ -64,14 +64,18 @@ import {
 import {
   createDoc as newDocRecord,
   createMemoryDoc,
+  htmlToText,
   isOnDisk,
+  loadDocReadOnly,
   loadDocOrder,
   loadPrefs,
   loadTheme,
   safeFileName,
+  saveDocReadOnly,
   saveDocOrder,
   savePrefs,
   saveTheme,
+  moveDocReadOnly,
   touchDoc,
   type DocRecord,
   type Prefs,
@@ -83,12 +87,25 @@ interface Toast {
   text: string
 }
 
+const SourceEditor = lazy(() => import('./components/SourceEditor'))
+
 function uniqueTemporaryTitle(docs: readonly DocRecord[], base = '未命名文档'): string {
   const used = new Set(docs.filter((doc) => !isOnDisk(doc)).map((doc) => doc.title))
   if (!used.has(base)) return base
   let index = 2
   while (used.has(`${base} ${index}`)) index += 1
   return `${base} ${index}`
+}
+
+function headingsFromMarkdown(markdown: string): HeadingItem[] {
+  const list: HeadingItem[] = []
+  let offset = 0
+  for (const line of markdown.split('\n')) {
+    const match = /^(#{1,6})\s+(.+?)\s*#*\s*$/.exec(line)
+    if (match) list.push({ pos: offset, level: match[1].length, text: match[2].trim() || '无标题' })
+    offset += line.length + 1
+  }
+  return list
 }
 
 export default function App() {
@@ -119,11 +136,13 @@ export default function App() {
   const [toasts, setToasts] = useState<Toast[]>([])
   const [scrollEl, setScrollEl] = useState<HTMLDivElement | null>(null)
   const [resizingSidebar, setResizingSidebar] = useState(false)
+  const [draggingMarkdown, setDraggingMarkdown] = useState(false)
 
   /* ---------------- 引用 ---------------- */
   const scrollElRef = useRef<HTMLDivElement | null>(null)
   const titleInputRef = useRef<HTMLInputElement>(null)
   const prefsRef = useRef(prefs)
+  const effectiveReadOnlyRef = useRef(prefs.readOnly)
   const lastRootsRef = useRef<WorkspaceInfo[]>([])
   const headingsRef = useRef<HeadingItem[]>([])
   const saveTimer = useRef<number | null>(null)
@@ -135,10 +154,14 @@ export default function App() {
   const docsRef = useRef(docs)
   const activeIdRef = useRef(activeId)
   const editorRef = useRef<Editor | null>(null)
+  const sourceEditorRef = useRef<SourceEditorHandle>(null)
+  /** 避免只切换模式、未改富文本时把原始 Markdown 重新格式化。 */
+  const richChangedRef = useRef(false)
   /** 编辑器重建后是否要把焦点交给标题输入框（新建 / 导入文档时） */
   const pendingTitleFocus = useRef(false)
   /** 编辑器重建后是否聚焦到正文开头（切换 / 删除 / 副本文档时） */
   const pendingEditorFocus = useRef(false)
+  const pendingSourceFocus = useRef(false)
   /** StrictMode 会重复执行首次副作用，避免欢迎文档被第二篇空文档覆盖。 */
   const initialDocumentCreated = useRef(false)
   const sidebarResizeRef = useRef({ startX: 0, startWidth: 248 })
@@ -149,6 +172,8 @@ export default function App() {
   lastRootsRef.current = lastRoots
 
   const currentDoc = docs.find((d) => d.id === activeId)
+  const effectiveReadOnly = currentDoc?.readOnlyOverride ?? prefs.readOnly
+  effectiveReadOnlyRef.current = effectiveReadOnly
   const title = currentDoc?.title ?? '未命名文档'
   const titleRef = useRef(title)
   titleRef.current = title
@@ -245,6 +270,8 @@ export default function App() {
   const loadDocs = useCallback(async (list: WorkspaceInfo[], preferId = ''): Promise<void> => {
     const [files, nextFolders] = await Promise.all([listDocFiles(), listFolders()])
     const records: DocRecord[] = []
+    const cachedDocs = new Map(docsRef.current.map((doc) => [doc.id, doc]))
+    const dirtyBeforeReload = new Set(dirtyIdsRef.current)
     const temporary = docsRef.current.filter((doc) => !isOnDisk(doc))
 
     for (const info of list) {
@@ -261,19 +288,27 @@ export default function App() {
         return a.title.localeCompare(b.title, 'zh-Hans-CN')
       })
       for (const file of mine) {
-        const html = markdownToHtml(await readDocFile(file.root, file.path))
+        const id = `${file.root}|${file.path}`
+        const cached = cachedDocs.get(id)
+        if (cached && dirtyBeforeReload.has(id)) {
+          records.push(cached)
+          continue
+        }
+        const markdown = await readDocFile(file.root, file.path)
+        const html = markdownToHtml(markdown)
         records.push({
-          ...newDocRecord(file.title, html, file.root, file.path),
+          ...newDocRecord(file.title, html, file.root, file.path, markdown),
+          readOnlyOverride: loadDocReadOnly(id),
           createdAt: file.mtime,
           updatedAt: file.mtime,
         })
       }
     }
 
-    dirtyIdsRef.current.clear()
-    setSaveState('idle')
     setFolders(nextFolders)
     const nextDocs = [...records, ...temporary]
+    const nextIds = new Set(nextDocs.map((doc) => doc.id))
+    dirtyIdsRef.current = new Set([...dirtyBeforeReload].filter((id) => nextIds.has(id)))
     docsRef.current = nextDocs
     setDocs(nextDocs)
 
@@ -281,6 +316,7 @@ export default function App() {
     activeIdRef.current = wanted?.id ?? ''
     setActiveId(wanted?.id ?? '')
     setActiveRoot(wanted?.root ?? null)
+    setSaveState(wanted && dirtyIdsRef.current.has(wanted.id) ? 'dirty' : 'idle')
   }, [])
 
   /** 打开（并挂载）一个目录；传 null 表示弹系统选择框 */
@@ -296,9 +332,16 @@ export default function App() {
     [loadDocs],
   )
 
-  /** 把 HTML 写进指定文档（同步更新 ref，供后续同步落盘） */
-  const commitHtml = useCallback((id: string, html: string) => {
-    const next = docsRef.current.map((d) => (d.id === id ? touchDoc(d, { html }) : d))
+  /** 把富文本及其 Markdown 同步进记录，保证两种编辑模式使用同一份内容。 */
+  const commitHtml = useCallback((id: string, html: string, markdown?: string) => {
+    const patch = markdown === undefined ? { html } : { html, markdown }
+    const next = docsRef.current.map((d) => (d.id === id ? touchDoc(d, patch) : d))
+    docsRef.current = next
+    setDocs(next)
+  }, [])
+
+  const commitMarkdown = useCallback((id: string, markdown: string) => {
+    const next = docsRef.current.map((d) => (d.id === id ? touchDoc(d, { markdown }) : d))
     docsRef.current = next
     setDocs(next)
   }, [])
@@ -307,21 +350,20 @@ export default function App() {
    * 把当前文档序列化成 Markdown 写回磁盘。
    * 标题和文件名不一致时先改名（重命名也会顺带带走「文档名.assets」资源目录）。
    */
-  const persistToDisk = useCallback(async (ed: Editor) => {
-    const id = activeIdRef.current
-    const doc = docsRef.current.find((d) => d.id === id)
-    if (!doc || !isOnDisk(doc)) return false
+  const persistMarkdownToDisk = useCallback(async (doc: DocRecord, markdown: string) => {
+    const id = doc.id
+    if (!isOnDisk(doc)) return false
 
     let path = doc.path
     let savedId = id
     const root = doc.root
-    const markdown = docToMarkdown(ed.getJSON())
     const currentName = path.replace(/^.*\//, '').replace(/\.(md|markdown)$/i, '')
     if (currentName !== doc.title) {
       const renamed = await renameDocFile(root, path, doc.title)
       if (renamed) {
         path = renamed.path
         savedId = `${renamed.root}|${renamed.path}`
+        moveDocReadOnly(id, savedId)
         const nextDocs = docsRef.current.map((d) =>
           d.id === id
             ? { ...d, id: savedId, path: renamed.path, title: renamed.title }
@@ -348,24 +390,35 @@ export default function App() {
     return ok
   }, [])
 
-  /** 立即同步编辑器内容；自动保存开启或显式传 true 时才写回磁盘 */
+  /** 立即同步当前模式内容；自动保存开启或显式传 true 时才写回磁盘。 */
   const flushSave = useCallback((forcePersist = prefsRef.current.autoSave) => {
     if (saveTimer.current !== null) {
       window.clearTimeout(saveTimer.current)
       saveTimer.current = null
     }
-    const ed = editorRef.current
-    if (!ed || ed.isDestroyed) return
     const id = activeIdRef.current
-    commitHtml(id, ed.getHTML())
-    const doc = docsRef.current.find((d) => d.id === id)
-    if (doc && isOnDisk(doc) && forcePersist) void persistToDisk(ed)
+    let doc = docsRef.current.find((d) => d.id === id)
+    if (!doc) return
+
+    let markdown = doc.markdown
+    if (prefsRef.current.editorMode === 'source') {
+      commitHtml(id, markdownToHtml(markdown), markdown)
+    } else {
+      const ed = editorRef.current
+      if (!ed || ed.isDestroyed) return
+      if (richChangedRef.current) markdown = docToMarkdown(ed.getJSON())
+      commitHtml(id, ed.getHTML(), markdown)
+      richChangedRef.current = false
+    }
+
+    doc = docsRef.current.find((d) => d.id === id)
+    if (doc && isOnDisk(doc) && forcePersist) void persistMarkdownToDisk(doc, markdown)
     else if (doc && !isOnDisk(doc)) {
-      void writeDraftFile(id, doc.title, docToMarkdown(ed.getJSON())).then(() => {
+      void writeDraftFile(id, doc.title, markdown).then(() => {
         if (activeIdRef.current === id) setSaveState('dirty')
       })
     }
-  }, [commitHtml, persistToDisk])
+  }, [commitHtml, persistMarkdownToDisk])
 
   const scheduleSave = useCallback(() => {
     const id = activeIdRef.current
@@ -393,9 +446,8 @@ export default function App() {
   }, [flushSave])
 
   const manualSave = useCallback(async () => {
-    const doc = docsRef.current.find((d) => d.id === activeIdRef.current)
-    const ed = editorRef.current
-    if (!doc || !ed || ed.isDestroyed) return
+    let doc = docsRef.current.find((d) => d.id === activeIdRef.current)
+    if (!doc) return
     if (isOnDisk(doc)) {
       flushSave(true)
       pushToast('已保存')
@@ -406,9 +458,20 @@ export default function App() {
       window.clearTimeout(saveTimer.current)
       saveTimer.current = null
     }
-    commitHtml(doc.id, ed.getHTML())
+    let markdown = doc.markdown
+    if (prefsRef.current.editorMode === 'source') {
+      commitHtml(doc.id, markdownToHtml(markdown), markdown)
+    } else {
+      const ed = editorRef.current
+      if (!ed || ed.isDestroyed) return
+      if (richChangedRef.current) markdown = docToMarkdown(ed.getJSON())
+      commitHtml(doc.id, ed.getHTML(), markdown)
+      richChangedRef.current = false
+    }
+    doc = docsRef.current.find((item) => item.id === doc?.id)
+    if (!doc) return
     setSaveState('saving')
-    const saved = await saveDocAs(safeFileName(doc.title), docToMarkdown(ed.getJSON()))
+    const saved = await saveDocAs(safeFileName(doc.title), markdown)
     if (!saved) {
       setSaveState('dirty')
       return
@@ -423,6 +486,7 @@ export default function App() {
     docsRef.current = nextDocs
     setDocs(nextDocs)
     dirtyIdsRef.current.delete(doc.id)
+    moveDocReadOnly(doc.id, savedId)
     void removeDraftFile(doc.id)
     setRoots(saved.state.roots)
     activeIdRef.current = savedId
@@ -433,6 +497,67 @@ export default function App() {
     pushToast('文档已保存')
   }, [commitHtml, flushSave, loadDocs, pushToast])
 
+  const refreshSource = useCallback((markdown: string) => {
+    let text = markdown
+    try {
+      text = htmlToText(markdownToHtml(markdown))
+    } catch {
+      /* 保留原文作为统计兜底 */
+    }
+    setStats({ words: countWords(text), chars: countChars(text) })
+    const next = headingsFromMarkdown(markdown)
+    headingsRef.current = next
+    setHeadings(next)
+  }, [])
+
+  const handleSourceChange = useCallback(
+    (markdown: string) => {
+      const id = activeIdRef.current
+      if (!id || effectiveReadOnlyRef.current) return
+      commitMarkdown(id, markdown)
+      refreshSource(markdown)
+      scheduleSave()
+    },
+    [commitMarkdown, refreshSource, scheduleSave],
+  )
+
+  const toggleEditorMode = useCallback(() => {
+    const leavingSource = prefsRef.current.editorMode === 'source'
+    flushSave(false)
+    if (leavingSource) {
+      /*
+       * Tiptap 在源码模式中保持挂载，避免切回富文本时工具栏短暂拿到
+       * 已销毁的 editor。切换前把最新 Markdown 灌回同一个实例即可。
+       */
+      const doc = docsRef.current.find((item) => item.id === activeIdRef.current)
+      const ed = editorRef.current
+      if (doc && ed && !ed.isDestroyed) {
+        ed.commands.setContent(markdownToHtml(doc.markdown), { emitUpdate: false })
+        richChangedRef.current = false
+      }
+      pendingEditorFocus.current = true
+    } else {
+      pendingSourceFocus.current = true
+    }
+    setPrefs((current) => ({ ...current, editorMode: leavingSource ? 'rich' : 'source' }))
+  }, [flushSave])
+
+  const cycleDocumentReadOnly = useCallback(() => {
+    const id = activeIdRef.current
+    const doc = docsRef.current.find((item) => item.id === id)
+    if (!doc) return
+    const next = doc.readOnlyOverride === null ? true : doc.readOnlyOverride ? false : null
+    const nextEffective = next ?? prefsRef.current.readOnly
+    if (!effectiveReadOnlyRef.current && nextEffective) flushSave()
+    const updated = docsRef.current.map((item) =>
+      item.id === id ? { ...item, readOnlyOverride: next } : item,
+    )
+    docsRef.current = updated
+    setDocs(updated)
+    saveDocReadOnly(id, next)
+    pushToast(next === null ? '此文档已改为跟随全局只读设置' : next ? '此文档已设为只读' : '此文档已设为可编辑')
+  }, [flushSave, pushToast])
+
   /**
    * 插入图片。
    * 「原图」策略：把原图字节写进资源目录，节点只记相对引用；
@@ -441,10 +566,13 @@ export default function App() {
   const insertImages = useCallback(
     async (files: File[]) => {
       const ed = editorRef.current
-      if (!ed || ed.isDestroyed || prefsRef.current.readOnly || files.length === 0) return
+      const sourceMode = prefsRef.current.editorMode === 'source'
+      if (effectiveReadOnlyRef.current || files.length === 0) return
+      if (!sourceMode && (!ed || ed.isDestroyed)) return
 
       const target = currentDoc?.root || null
       const toDisk = prefs.imageMode === 'file' && Boolean(target)
+      const sourceSnippets: string[] = []
       let inserted = 0
 
       for (const file of files) {
@@ -455,10 +583,19 @@ export default function App() {
             const want = assetRelPath(resolveAssetDir(prefs.assetDir, titleRef.current), name)
             const saved = await writeAssetFile(target, want, bytes)
             if (!saved) continue
-            ed.chain().focus().insertImage({ rel: saved, alt: name }).run()
+            if (sourceMode) {
+              const destination = /[\s()<>]/.test(saved) ? `<${saved}>` : saved
+              sourceSnippets.push(`![${name.replace(/[[\]]/g, '\\$&')}](${destination})`)
+            } else {
+              ed?.chain().focus().insertImage({ rel: saved, alt: name }).run()
+            }
           } else {
             const dataUrl = await fileToDataUrl(file)
-            ed.chain().focus().insertImage({ rel: dataUrl, alt: file.name }).run()
+            if (sourceMode) {
+              sourceSnippets.push(`![${file.name.replace(/[[\]]/g, '\\$&')}](${dataUrl})`)
+            } else {
+              ed?.chain().focus().insertImage({ rel: dataUrl, alt: file.name }).run()
+            }
           }
           inserted += 1
         } catch {
@@ -470,20 +607,22 @@ export default function App() {
         pushToast('图片插入失败')
         return
       }
+      if (sourceMode) sourceEditorRef.current?.insertText(sourceSnippets.join('\n'))
       pushToast(toDisk ? `已插入 ${inserted} 张原图到资源目录` : `已内联插入 ${inserted} 张图片`)
-      scheduleSave()
+      if (!sourceMode) scheduleSave()
     },
     [currentDoc?.root, prefs.imageMode, prefs.assetDir, pushToast, scheduleSave],
   )
 
   /* ---------------- 编辑器实例 ----------------
-     deps = [activeId, booted]：切换文档时销毁重建，
-     顺带清空 undo 历史，避免 Ctrl+Z 把上一篇的内容恢复出来。 */
+     deps = [activeId, booted]：只在切换文档时销毁重建，
+     顺带清空 undo 历史，避免 Ctrl+Z 把上一篇的内容恢复出来。
+     富文本 / 源码切换必须复用实例，否则工具栏可能引用到销毁中的 editor。 */
   const editor = useEditor(
     {
       extensions: createExtensions(),
       content: currentDoc?.html ?? '<p></p>',
-      editable: !prefsRef.current.readOnly,
+      editable: !effectiveReadOnlyRef.current,
       editorProps: {
         attributes: { class: 'tiptap', spellcheck: 'false' },
         handlePaste: createPasteHandler((files) => void insertImages(files)),
@@ -491,6 +630,8 @@ export default function App() {
       },
       shouldRerenderOnTransaction: true,
       onUpdate: ({ editor: ed }) => {
+        if (prefsRef.current.editorMode !== 'rich') return
+        richChangedRef.current = true
         refreshAll(ed)
         scheduleSave()
       },
@@ -510,24 +651,39 @@ export default function App() {
   // 用显式意图标记决定是否抢焦点，比"是不是第一次挂载"更可靠（StrictMode 下 effect 会跑两次）
   useEffect(() => {
     if (!editor) return
-    refreshAll(editor)
+    richChangedRef.current = false
+    if (prefs.editorMode === 'source') refreshSource(currentDoc?.markdown ?? '')
+    else refreshAll(editor)
 
     if (pendingTitleFocus.current) {
       pendingTitleFocus.current = false
       titleInputRef.current?.focus()
       titleInputRef.current?.select()
-    } else if (pendingEditorFocus.current) {
+    } else if (pendingEditorFocus.current && prefs.editorMode === 'rich') {
       pendingEditorFocus.current = false
       editor.commands.focus('start')
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [editor])
+  }, [editor, prefs.editorMode])
+
+  useEffect(() => {
+    if (prefs.editorMode !== 'source') return
+    refreshSource(currentDoc?.markdown ?? '')
+    if (pendingEditorFocus.current) {
+      pendingEditorFocus.current = false
+      pendingSourceFocus.current = true
+    }
+    if (pendingSourceFocus.current) {
+      pendingSourceFocus.current = false
+      requestAnimationFrame(() => sourceEditorRef.current?.focus())
+    }
+  }, [activeId, currentDoc?.markdown, prefs.editorMode, refreshSource])
 
   useEffect(() => {
     if (!editor) return
-    editor.setEditable(!prefs.readOnly)
-    if (prefs.readOnly) editor.commands.blur()
-  }, [editor, prefs.readOnly])
+    editor.setEditable(!effectiveReadOnly)
+    if (effectiveReadOnly) editor.commands.blur()
+  }, [editor, effectiveReadOnly])
 
   // 首屏：刷新页面时沿用已挂载目录；真正冷启动始终显示启动选择页。
   useEffect(() => {
@@ -540,8 +696,14 @@ export default function App() {
         void removeDraftFile(empty.id)
       }
       const recoveredDocs = meaningfulDrafts.map((file) => {
-        const record = createMemoryDoc(file.title, markdownToHtml(file.content))
-        return { ...record, id: file.id, createdAt: file.mtime, updatedAt: file.mtime }
+        const record = createMemoryDoc(file.title, markdownToHtml(file.content), file.content)
+        return {
+          ...record,
+          id: file.id,
+          readOnlyOverride: loadDocReadOnly(file.id),
+          createdAt: file.mtime,
+          updatedAt: file.mtime,
+        }
       })
       docsRef.current = recoveredDocs
       setDocs(recoveredDocs)
@@ -664,7 +826,7 @@ export default function App() {
           return
         }
         const record: DocRecord = {
-          ...newDocRecord(meta.title, '<p></p>', meta.root, meta.path),
+          ...newDocRecord(meta.title, '<p></p>', meta.root, meta.path, ''),
           createdAt: meta.mtime,
           updatedAt: meta.mtime,
         }
@@ -703,7 +865,7 @@ export default function App() {
     const target = optimistic.find((d) => d.id === id)
     if (!target) return
     if (!isOnDisk(target)) {
-      void writeDraftFile(target.id, target.title, htmlToMarkdown(target.html))
+      void writeDraftFile(target.id, target.title, target.markdown || htmlToMarkdown(target.html))
       return
     }
 
@@ -711,6 +873,7 @@ export default function App() {
       const meta = await renameDocFile(target.root, target.path, clean)
       if (!meta) return
       const newId = `${meta.root}|${meta.path}`
+      moveDocReadOnly(id, newId)
       if (dirtyIdsRef.current.delete(id)) dirtyIdsRef.current.add(newId)
       const synced = docsRef.current.map((d) =>
         d.id === id ? { ...d, id: newId, path: meta.path, title: meta.title } : d,
@@ -726,18 +889,22 @@ export default function App() {
 
   const duplicateDoc = useCallback(
     (id: string) => {
+      flushSave()
       const src = docsRef.current.find((d) => d.id === id)
       if (!src) return
-      flushSave()
 
       if (!isOnDisk(src)) {
-        const copy = createMemoryDoc(uniqueTemporaryTitle(docsRef.current, `${src.title} 副本`), src.html)
+        const copy = createMemoryDoc(
+          uniqueTemporaryTitle(docsRef.current, `${src.title} 副本`),
+          src.html,
+          src.markdown,
+        )
         docsRef.current = [...docsRef.current, copy]
         setDocs(docsRef.current)
         activeIdRef.current = copy.id
         setActiveId(copy.id)
         setSaveState('idle')
-        void writeDraftFile(copy.id, copy.title, htmlToMarkdown(copy.html))
+        void writeDraftFile(copy.id, copy.title, copy.markdown || htmlToMarkdown(copy.html))
         pendingEditorFocus.current = true
         pushToast('已创建副本')
         return
@@ -751,9 +918,9 @@ export default function App() {
           pushToast('创建副本失败')
           return
         }
-        await writeDocFile(meta.root, meta.path, htmlToMarkdown(src.html))
+        await writeDocFile(meta.root, meta.path, src.markdown || htmlToMarkdown(src.html))
         const record: DocRecord = {
-          ...newDocRecord(meta.title, src.html, meta.root, meta.path),
+          ...newDocRecord(meta.title, src.html, meta.root, meta.path, src.markdown || htmlToMarkdown(src.html)),
           createdAt: meta.mtime,
           updatedAt: meta.mtime,
         }
@@ -774,6 +941,7 @@ export default function App() {
       flushSave()
       dirtyIdsRef.current.delete(id)
       const target = docsRef.current.find((d) => d.id === id)
+      saveDocReadOnly(id, null)
       if (target && isOnDisk(target)) void removeDocFile(target.root, target.path)
       else if (target) void removeDraftFile(target.id)
 
@@ -820,6 +988,7 @@ export default function App() {
       }
 
       targetIds.forEach((id) => dirtyIdsRef.current.delete(id))
+      targetIds.forEach((id) => saveDocReadOnly(id, null))
       const activeIndex = docsRef.current.findIndex((doc) => doc.id === activeIdRef.current)
       const activeWasDeleted = targetIds.has(activeIdRef.current)
       const rest = docsRef.current.filter((doc) => !targetIds.has(doc.id))
@@ -916,6 +1085,67 @@ export default function App() {
     return true
   }, [flushSave, loadDocs, pushToast])
 
+  const handleDroppedMarkdown = useCallback(
+    async (file: File) => {
+      flushSave()
+      const opened = await openDroppedDocFile(file)
+      if (!opened) {
+        pushToast('无法打开拖入的 Markdown 文件')
+        return
+      }
+      const id = `${opened.file.root}|${opened.file.path}`
+      saveDocReadOnly(id, true)
+      setRoots(opened.state.roots)
+      setPrefs((current) => ({ ...current, sidebar: true, panel: 'docs', focus: false }))
+      setShowLauncher(false)
+      await loadDocs(opened.state.roots, id)
+      const updated = docsRef.current.map((doc) =>
+        doc.id === id ? { ...doc, readOnlyOverride: true } : doc,
+      )
+      docsRef.current = updated
+      setDocs(updated)
+      pushToast(`已以只读方式打开「${opened.file.title}」`)
+    },
+    [flushSave, loadDocs, pushToast],
+  )
+
+  useEffect(() => {
+    const markdownFile = (transfer: DataTransfer | null): File | null => {
+      if (!transfer) return null
+      const files = Array.from(transfer.files)
+      for (const item of Array.from(transfer.items)) {
+        const file = item.kind === 'file' ? item.getAsFile() : null
+        if (file && !files.includes(file)) files.push(file)
+      }
+      return files.find((file) => /\.(md|markdown)$/i.test(file.name)) ?? null
+    }
+    const onDragOver = (event: DragEvent) => {
+      if (!markdownFile(event.dataTransfer)) return
+      event.preventDefault()
+      if (event.dataTransfer) event.dataTransfer.dropEffect = 'copy'
+      setDraggingMarkdown(true)
+    }
+    const onDragLeave = (event: DragEvent) => {
+      if (event.relatedTarget === null) setDraggingMarkdown(false)
+    }
+    const onDrop = (event: DragEvent) => {
+      const file = markdownFile(event.dataTransfer)
+      if (!file) return
+      event.preventDefault()
+      event.stopPropagation()
+      setDraggingMarkdown(false)
+      void handleDroppedMarkdown(file)
+    }
+    window.addEventListener('dragover', onDragOver)
+    window.addEventListener('dragleave', onDragLeave)
+    window.addEventListener('drop', onDrop)
+    return () => {
+      window.removeEventListener('dragover', onDragOver)
+      window.removeEventListener('dragleave', onDragLeave)
+      window.removeEventListener('drop', onDrop)
+    }
+  }, [handleDroppedMarkdown])
+
   /** 启动选择页的四个出口 */
   const finishLaunch = useCallback(
     async (action: 'last' | 'folder' | 'file' | 'blank') => {
@@ -947,13 +1177,15 @@ export default function App() {
   )
 
   const handleExport = useCallback(async () => {
-    const md = docToMarkdown(editor.getJSON())
+    flushSave(false)
+    const md = docsRef.current.find((doc) => doc.id === activeIdRef.current)?.markdown ?? ''
     const name = `${safeFileName(titleRef.current)}.md`
     if (await saveTextNative(name, md)) pushToast('已导出 Markdown 文件')
-  }, [editor, pushToast])
+  }, [flushSave, pushToast])
 
   const handleCopyMd = useCallback(async () => {
-    const md = docToMarkdown(editor.getJSON())
+    flushSave(false)
+    const md = docsRef.current.find((doc) => doc.id === activeIdRef.current)?.markdown ?? ''
     let ok = false
     try {
       if (navigator.clipboard?.writeText) {
@@ -964,7 +1196,7 @@ export default function App() {
       ok = false
     }
     pushToast(ok ? 'Markdown 已复制到剪贴板' : '复制失败')
-  }, [editor, pushToast])
+  }, [flushSave, pushToast])
 
   /** 全部文档 → 一个 ZIP，每篇一个 .md */
   const handleExportAll = useCallback(async () => {
@@ -1033,7 +1265,7 @@ export default function App() {
         if (!meta) continue
         await writeDocFile(meta.root, meta.path, item.text)
         const record: DocRecord = {
-          ...newDocRecord(meta.title, markdownToHtml(item.text), meta.root, meta.path),
+          ...newDocRecord(meta.title, markdownToHtml(item.text), meta.root, meta.path, item.text),
           createdAt: meta.mtime,
           updatedAt: meta.mtime,
         }
@@ -1057,6 +1289,11 @@ export default function App() {
 
   const jumpTo = useCallback(
     (item: HeadingItem) => {
+      if (prefsRef.current.editorMode === 'source') {
+        sourceEditorRef.current?.focusAt(item.pos)
+        setActiveHeading(activeIndexFor(headingsRef.current, item.pos))
+        return
+      }
       editor.chain().focus().setTextSelection(item.pos + 1).scrollIntoView().run()
       setActiveHeading(activeIndexFor(headingsRef.current, item.pos + 1))
     },
@@ -1066,13 +1303,18 @@ export default function App() {
   /* ---------------- 全局快捷键 ---------------- */
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
+      if (event.key === 'F1') {
+        event.preventDefault()
+        setShowHelp((value) => !value)
+        return
+      }
       const mod = event.metaKey || event.ctrlKey
       if (!mod) return
       const key = event.key.toLowerCase()
 
       if (event.key === '/') {
         event.preventDefault()
-        setShowHelp((v) => !v)
+        toggleEditorMode()
       } else if (event.altKey && key === 'n') {
         event.preventDefault()
         createDoc(null)
@@ -1100,7 +1342,7 @@ export default function App() {
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [createDoc, handleExport, handleExportAll, handleCopyMd, manualSave])
+  }, [createDoc, handleExport, handleExportAll, handleCopyMd, manualSave, toggleEditorMode])
 
   /* ---------------- 原生菜单 ---------------- */
   useEffect(() => {
@@ -1178,8 +1420,8 @@ export default function App() {
         </button>
 
         <div
-          className={'current-doc' + (prefs.readOnly ? ' is-readonly' : '')}
-          title={prefs.readOnly ? '只读模式已开启' : '当前文档名称，点击即可修改'}
+          className={'current-doc' + (effectiveReadOnly ? ' is-readonly' : '')}
+          title={effectiveReadOnly ? '当前文档为只读' : '当前文档名称，点击即可修改'}
         >
           <input
             ref={titleInputRef}
@@ -1188,9 +1430,9 @@ export default function App() {
             placeholder="未命名文档"
             aria-label="当前文档名称，点击修改"
             disabled={!currentDoc}
-              readOnly={prefs.readOnly}
+              readOnly={effectiveReadOnly}
               onChange={(e) => {
-                if (prefsRef.current.readOnly) return
+                if (effectiveReadOnlyRef.current) return
                 const next = e.target.value
               const id = activeIdRef.current
               const nextDocs = docsRef.current.map((d) => (d.id === id ? { ...d, title: next } : d))
@@ -1223,38 +1465,32 @@ export default function App() {
           <button
             type="button"
             className={'btn' + (prefs.readOnly ? ' is-active' : '')}
-            title={prefs.readOnly ? '关闭只读模式，允许编辑' : '开启只读模式'}
+            title={prefs.readOnly ? '关闭全局只读模式' : '开启全局只读模式'}
             aria-pressed={prefs.readOnly}
             onClick={() => setPrefs((p) => ({ ...p, readOnly: !p.readOnly }))}
           >
             <Lock size={16} strokeWidth={2} />
           </button>
-
-          <div className="divider-v" />
-
           {(!prefs.autoSave || !onDisk) && (
-            <button
-              type="button"
-              className={'btn' + (saveState === 'dirty' ? ' is-active' : '')}
-              title={onDisk ? '保存当前文档 (Ctrl/⌘ + S)' : '选择位置保存文档 (Ctrl/⌘ + S)'}
-              disabled={!currentDoc || saveState === 'saving'}
-              onClick={() => void manualSave()}
-            >
-              <Save size={17} strokeWidth={2} />
-            </button>
+            <>
+              <div className="divider-v" />
+              <button
+                type="button"
+                className={'btn' + (saveState === 'dirty' ? ' is-active' : '')}
+                title={onDisk ? '保存当前文档 (Ctrl/⌘ + S)' : '选择位置保存文档 (Ctrl/⌘ + S)'}
+                disabled={!currentDoc || saveState === 'saving'}
+                onClick={() => void manualSave()}
+              >
+                <Save size={17} strokeWidth={2} />
+              </button>
+            </>
           )}
-          <button type="button" className="btn" title="导出当前文档为 .md (Ctrl/⌘ + Shift + E)" onClick={() => void handleExport()}>
-            <Download size={17} strokeWidth={2} />
-          </button>
-          <button type="button" className="btn" title="复制当前文档的 Markdown (Ctrl/⌘ + Shift + C)" onClick={() => void handleCopyMd()}>
-            <Copy size={17} strokeWidth={2} />
-          </button>
           <div className="divider-v" />
 
           <button type="button" className="btn" title="设置：目录与图片的存储方式" onClick={() => setShowSettings(true)}>
             <SettingsIcon size={17} strokeWidth={2} />
           </button>
-          <button type="button" className="btn" title="快捷键 (Ctrl/⌘ + /)" onClick={() => setShowHelp(true)}>
+          <button type="button" className="btn" title="快捷键 (F1)" onClick={() => setShowHelp(true)}>
             <Keyboard size={17} strokeWidth={2} />
           </button>
           <button
@@ -1345,12 +1581,40 @@ export default function App() {
         {/* 主编辑区 */}
         <main className="main">
           {!prefs.focus && (
-            <Toolbar editor={editor} readOnly={prefs.readOnly} onInsertImage={() => imageRef.current?.click()} />
+            <Toolbar
+              editor={editor}
+              readOnly={effectiveReadOnly}
+              sourceMode={prefs.editorMode === 'source'}
+              documentReadOnlyOverride={currentDoc?.readOnlyOverride ?? null}
+              hasDocument={Boolean(currentDoc)}
+              onToggleSource={toggleEditorMode}
+              onCycleDocumentReadOnly={cycleDocumentReadOnly}
+              onCopyMarkdown={() => void handleCopyMd()}
+              onExportMarkdown={() => void handleExport()}
+              onInsertImage={() => imageRef.current?.click()}
+            />
           )}
           <div className="scroll-area" ref={setScrollNode}>
-            <div className="page">
+            <div className={'page' + (prefs.editorMode === 'source' ? ' is-source' : '')}>
               <div className="editor-shell">
-                <EditorContent editor={editor} />
+                {prefs.editorMode === 'source' ? (
+                  <Suspense fallback={<div className="source-editor-loading">正在载入源码编辑器…</div>}>
+                    <SourceEditor
+                      key={activeId}
+                      ref={sourceEditorRef}
+                      value={currentDoc?.markdown ?? ''}
+                      readOnly={effectiveReadOnly}
+                      onChange={handleSourceChange}
+                      onSelectionChange={(position) =>
+                        setActiveHeading(activeIndexFor(headingsRef.current, position))
+                      }
+                      onImages={(files) => void insertImages(files)}
+                      onToggleMode={toggleEditorMode}
+                    />
+                  </Suspense>
+                ) : (
+                  <EditorContent editor={editor} />
+                )}
               </div>
             </div>
           </div>
@@ -1409,8 +1673,18 @@ export default function App() {
         </div>
       </footer>
 
+      {draggingMarkdown && (
+        <div className="markdown-drop-overlay" aria-hidden="true">
+          <div>
+            <FileText size={30} strokeWidth={1.7} />
+            <strong>松开以只读方式打开 Markdown</strong>
+            <span>将同时打开此文档所在目录</span>
+          </div>
+        </div>
+      )}
+
       {/* 浮层 */}
-      <BubbleBar editor={editor} scrollEl={scrollEl} />
+      {prefs.editorMode === 'rich' && <BubbleBar editor={editor} scrollEl={scrollEl} />}
       {showAbout && <About onClose={() => setShowAbout(false)} />}
       {showHelp && <Shortcuts onClose={() => setShowHelp(false)} />}
       {showSettings && (

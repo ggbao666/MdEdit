@@ -1,4 +1,4 @@
-import { contextBridge, ipcRenderer } from 'electron'
+import { contextBridge, ipcRenderer, webUtils } from 'electron'
 
 interface WorkspaceInfo {
   root: string
@@ -42,6 +42,11 @@ const workspace = {
     state: { roots: WorkspaceInfo[]; last: WorkspaceInfo[] }
     file: DocFileMeta
   } | null> => ipcRenderer.invoke('ws:openFile'),
+
+  openDroppedFile: (file: File): Promise<{
+    state: { roots: WorkspaceInfo[]; last: WorkspaceInfo[] }
+    file: DocFileMeta
+  } | null> => ipcRenderer.invoke('ws:openDroppedFile', webUtils.getPathForFile(file)),
 
   saveAs: (suggestedName: string, content: string): Promise<{
     state: { roots: WorkspaceInfo[]; last: WorkspaceInfo[] }

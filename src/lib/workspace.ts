@@ -116,6 +116,20 @@ export async function openDocFile(): Promise<{ state: WorkspaceState; file: DocF
   }
 }
 
+export async function openDroppedDocFile(file: File): Promise<{ state: WorkspaceState; file: DocFileMeta } | null> {
+  const api = ws()
+  if (!api) return null
+  try {
+    const opened = await api.openDroppedFile(file)
+    if (!opened) return null
+    apply(opened.state)
+    activeRoot = opened.file.root
+    return opened
+  } catch {
+    return null
+  }
+}
+
 export async function saveDocAs(
   suggestedName: string,
   content: string,
