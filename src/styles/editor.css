@@ -5,6 +5,13 @@
   position: relative;
 }
 
+/* 所见即所得正文与应用背景分层，不额外绘制编辑区边框。 */
+.page:not(.is-source) .editor-shell {
+  margin: -20px -28px 0;
+  padding: 20px 28px 32px;
+  background: color-mix(in srgb, var(--surface) 88%, transparent);
+}
+
 .source-editor {
   width: 100%;
   min-height: calc(100vh - var(--topbar-h) - var(--toolbar-h) - var(--status-h) - 120px);
@@ -33,7 +40,7 @@
   color: var(--text);
   letter-spacing: 0.01em;
   word-break: break-word;
-  caret-color: var(--accent);
+  caret-color: auto;
   min-height: calc(100vh - var(--topbar-h) - var(--toolbar-h) - var(--status-h) - 120px);
 }
 
@@ -478,20 +485,6 @@
 }
 .tiptap .ProseMirror-gapcursor::after {
   border-top-color: var(--accent);
-}
-
-/* ============================================================
-   专注模式（外层 .is-focus 控制）
-   ============================================================ */
-.is-focus .tiptap > * {
-  opacity: 0.3;
-  transition: opacity 0.28s var(--ease);
-}
-.is-focus .tiptap > .has-focus {
-  opacity: 1;
-}
-.is-focus .tiptap > *:has(.has-focus) {
-  opacity: 1;
 }
 
 /* ============================================================

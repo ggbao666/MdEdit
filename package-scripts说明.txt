@@ -1,0 +1,112 @@
+MdEdit package.json 脚本说明
+============================
+
+运行方式
+--------
+
+所有脚本使用以下格式运行：
+
+  npm run <脚本名>
+
+例如：
+
+  npm run electron:dev
+
+
+开发与检查
+----------
+
+1. npm run dev
+
+   只启动 Vite 前端开发服务器，不启动 Electron 窗口。
+   默认地址通常是 http://127.0.0.1:5173。
+
+
+2. npm run electron:dev
+
+   推荐的 Electron 日常开发命令，自动启动 Vite、编译 Electron 主进程，
+   并打开 Electron 开发窗口。
+
+   关闭窗口或在终端按 Ctrl+C 后，会同时关闭开发服务器。
+   开发版使用独立的 MdEdit-dev 配置目录，可以与正式版同时运行。
+
+
+3. npm run electron:window
+
+   只编译并启动 Electron 窗口，不负责启动 Vite。
+   仅适合已经通过 npm run dev 启动 5173 端口时使用。
+
+
+4. npm run typecheck
+
+   使用 TypeScript 检查前端代码类型，不生成构建文件。
+
+
+5. npm run check:md
+
+   运行 scripts/check-markdown.mts，检查 Markdown 导入、转换和导出逻辑。
+
+
+6. npm run build
+
+   先检查 TypeScript，再使用 Vite 构建生产版前端。
+   输出目录：dist/
+
+
+Electron 编译与打包
+-------------------
+
+7. npm run electron:compile
+
+   编译 Electron 主进程和 preload 脚本，并补充 CommonJS 运行标记。
+   输出目录：dist-electron/
+
+
+8. npm run electron:unpacked
+
+   完整构建项目并生成未封装成安装程序的 Windows 应用目录。
+   适合制作安装包前快速检查最终应用文件。
+   输出目录：release/
+
+
+9. npm run electron:installer
+
+   完整构建项目并生成 Windows NSIS 安装程序。
+   输出文件类似：release/MdEdit-Setup-1.0.0-x64.exe
+
+
+10. npm run electron:portable
+
+    完整构建项目并生成无需安装的 Windows 便携版程序。
+    输出文件类似：release/MdEdit-Portable-1.0.0-x64.exe
+
+
+11. npm run electron:dist
+
+    按照 package.json 的 Windows targets 配置生成全部正式发布文件。
+    目前会同时生成 NSIS 安装版和 portable 便携版。
+    输出目录：release/
+
+
+常用命令
+--------
+
+日常开发 Electron 界面：
+
+  npm run electron:dev
+
+检查类型：
+
+  npm run typecheck
+
+检查生产构建：
+
+  npm run build
+
+生成安装版：
+
+  npm run electron:installer
+
+生成便携版：
+
+  npm run electron:portable

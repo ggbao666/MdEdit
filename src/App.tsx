@@ -2,14 +2,11 @@ import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } fro
 import type { CSSProperties, PointerEvent as ReactPointerEvent } from 'react'
 import { EditorContent, useEditor } from '@tiptap/react'
 import type { Editor } from '@tiptap/react'
+import { Selection } from '@tiptap/pm/state'
 import {
   FileText,
-  Focus as FocusIcon,
-  Keyboard,
-  Lock,
+  FolderTree,
   Moon,
-  MoveVertical,
-  PanelLeft,
   Save,
   Settings as SettingsIcon,
   Sun,
@@ -66,16 +63,13 @@ import {
   createMemoryDoc,
   htmlToText,
   isOnDisk,
-  loadDocReadOnly,
   loadDocOrder,
   loadPrefs,
   loadTheme,
   safeFileName,
-  saveDocReadOnly,
   saveDocOrder,
   savePrefs,
   saveTheme,
-  moveDocReadOnly,
   touchDoc,
   type DocRecord,
   type Prefs,
@@ -142,7 +136,6 @@ export default function App() {
   const scrollElRef = useRef<HTMLDivElement | null>(null)
   const titleInputRef = useRef<HTMLInputElement>(null)
   const prefsRef = useRef(prefs)
-  const effectiveReadOnlyRef = useRef(prefs.readOnly)
   const lastRootsRef = useRef<WorkspaceInfo[]>([])
   const headingsRef = useRef<HeadingItem[]>([])
   const saveTimer = useRef<number | null>(null)
@@ -172,8 +165,6 @@ export default function App() {
   lastRootsRef.current = lastRoots
 
   const currentDoc = docs.find((d) => d.id === activeId)
-  const effectiveReadOnly = currentDoc?.readOnlyOverride ?? prefs.readOnly
-  effectiveReadOnlyRef.current = effectiveReadOnly
   const title = currentDoc?.title ?? '未命名文档'
   const titleRef = useRef(title)
   titleRef.current = title
@@ -235,24 +226,6 @@ export default function App() {
     setActiveHeading(activeIndexFor(headingsRef.current, ed.state.selection.from))
   }
 
-  function applyTypewriter(ed: Editor) {
-    if (!prefsRef.current.typewriter) return
-    const el = scrollElRef.current
-    if (!el) return
-    const { view } = ed
-    if (!view.hasFocus()) return
-
-    let top: number
-    try {
-      top = view.coordsAtPos(view.state.selection.from).top
-    } catch {
-      return
-    }
-    const box = el.getBoundingClientRect()
-    const delta = top - (box.top + box.height * 0.4)
-    if (Math.abs(delta) > 2) el.scrollTop += delta
-  }
-
   /* ---------------- 通用动作 ---------------- */
 
   /** 新建 / 导入 / 删除等场景下给个轻量反馈 */
@@ -298,7 +271,6 @@ export default function App() {
         const html = markdownToHtml(markdown)
         records.push({
           ...newDocRecord(file.title, html, file.root, file.path, markdown),
-          readOnlyOverride: loadDocReadOnly(id),
           createdAt: file.mtime,
           updatedAt: file.mtime,
         })
@@ -363,7 +335,6 @@ export default function App() {
       if (renamed) {
         path = renamed.path
         savedId = `${renamed.root}|${renamed.path}`
-        moveDocReadOnly(id, savedId)
         const nextDocs = docsRef.current.map((d) =>
           d.id === id
             ? { ...d, id: savedId, path: renamed.path, title: renamed.title }
@@ -486,7 +457,6 @@ export default function App() {
     docsRef.current = nextDocs
     setDocs(nextDocs)
     dirtyIdsRef.current.delete(doc.id)
-    moveDocReadOnly(doc.id, savedId)
     void removeDraftFile(doc.id)
     setRoots(saved.state.roots)
     activeIdRef.current = savedId
@@ -513,7 +483,7 @@ export default function App() {
   const handleSourceChange = useCallback(
     (markdown: string) => {
       const id = activeIdRef.current
-      if (!id || effectiveReadOnlyRef.current) return
+      if (!id) return
       commitMarkdown(id, markdown)
       refreshSource(markdown)
       scheduleSave()
@@ -523,6 +493,7 @@ export default function App() {
 
   const toggleEditorMode = useCallback(() => {
     const leavingSource = prefsRef.current.editorMode === 'source'
+    // 先同步当前模式的最新内容，再切换视图；光标统一交给目标编辑器定位到文档开头。
     flushSave(false)
     if (leavingSource) {
       /*
@@ -542,22 +513,6 @@ export default function App() {
     setPrefs((current) => ({ ...current, editorMode: leavingSource ? 'rich' : 'source' }))
   }, [flushSave])
 
-  const cycleDocumentReadOnly = useCallback(() => {
-    const id = activeIdRef.current
-    const doc = docsRef.current.find((item) => item.id === id)
-    if (!doc) return
-    const next = doc.readOnlyOverride === null ? true : doc.readOnlyOverride ? false : null
-    const nextEffective = next ?? prefsRef.current.readOnly
-    if (!effectiveReadOnlyRef.current && nextEffective) flushSave()
-    const updated = docsRef.current.map((item) =>
-      item.id === id ? { ...item, readOnlyOverride: next } : item,
-    )
-    docsRef.current = updated
-    setDocs(updated)
-    saveDocReadOnly(id, next)
-    pushToast(next === null ? '此文档已改为跟随全局只读设置' : next ? '此文档已设为只读' : '此文档已设为可编辑')
-  }, [flushSave, pushToast])
-
   /**
    * 插入图片。
    * 「原图」策略：把原图字节写进资源目录，节点只记相对引用；
@@ -567,7 +522,7 @@ export default function App() {
     async (files: File[]) => {
       const ed = editorRef.current
       const sourceMode = prefsRef.current.editorMode === 'source'
-      if (effectiveReadOnlyRef.current || files.length === 0) return
+      if (files.length === 0) return
       if (!sourceMode && (!ed || ed.isDestroyed)) return
 
       const target = currentDoc?.root || null
@@ -622,7 +577,6 @@ export default function App() {
     {
       extensions: createExtensions(),
       content: currentDoc?.html ?? '<p></p>',
-      editable: !effectiveReadOnlyRef.current,
       editorProps: {
         attributes: { class: 'tiptap', spellcheck: 'false' },
         handlePaste: createPasteHandler((files) => void insertImages(files)),
@@ -637,7 +591,6 @@ export default function App() {
       },
       onSelectionUpdate: ({ editor: ed }) => {
         syncActive(ed)
-        applyTypewriter(ed)
       },
     },
     [activeId, booted],
@@ -651,6 +604,8 @@ export default function App() {
   // 用显式意图标记决定是否抢焦点，比"是不是第一次挂载"更可靠（StrictMode 下 effect 会跑两次）
   useEffect(() => {
     if (!editor) return
+    let focusFrame = 0
+    let cancelled = false
     richChangedRef.current = false
     if (prefs.editorMode === 'source') refreshSource(currentDoc?.markdown ?? '')
     else refreshAll(editor)
@@ -661,13 +616,31 @@ export default function App() {
       titleInputRef.current?.select()
     } else if (pendingEditorFocus.current && prefs.editorMode === 'rich') {
       pendingEditorFocus.current = false
-      editor.commands.focus('start')
+      let mountPasses = 0
+      const focusDocumentStart = () => {
+        if (cancelled || editor.isDestroyed || prefsRef.current.editorMode !== 'rich') return
+        if (!editor.view.dom.isConnected) {
+          mountPasses += 1
+          if (mountPasses < 12) focusFrame = requestAnimationFrame(focusDocumentStart)
+          return
+        }
+        if (scrollElRef.current) scrollElRef.current.scrollTop = 0
+        const startSelection = Selection.atStart(editor.state.doc)
+        editor.view.dispatch(editor.state.tr.setSelection(startSelection).scrollIntoView())
+        editor.view.focus()
+      }
+      focusFrame = requestAnimationFrame(focusDocumentStart)
+    }
+    return () => {
+      cancelled = true
+      cancelAnimationFrame(focusFrame)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [editor, prefs.editorMode])
 
   useEffect(() => {
     if (prefs.editorMode !== 'source') return
+    let restoreFrame = 0
     refreshSource(currentDoc?.markdown ?? '')
     if (pendingEditorFocus.current) {
       pendingEditorFocus.current = false
@@ -675,15 +648,13 @@ export default function App() {
     }
     if (pendingSourceFocus.current) {
       pendingSourceFocus.current = false
-      requestAnimationFrame(() => sourceEditorRef.current?.focus())
+      restoreFrame = requestAnimationFrame(() => {
+        if (scrollElRef.current) scrollElRef.current.scrollTop = 0
+        sourceEditorRef.current?.focusAt(0)
+      })
     }
+    return () => cancelAnimationFrame(restoreFrame)
   }, [activeId, currentDoc?.markdown, prefs.editorMode, refreshSource])
-
-  useEffect(() => {
-    if (!editor) return
-    editor.setEditable(!effectiveReadOnly)
-    if (effectiveReadOnly) editor.commands.blur()
-  }, [editor, effectiveReadOnly])
 
   // 首屏：刷新页面时沿用已挂载目录；真正冷启动始终显示启动选择页。
   useEffect(() => {
@@ -700,7 +671,6 @@ export default function App() {
         return {
           ...record,
           id: file.id,
-          readOnlyOverride: loadDocReadOnly(file.id),
           createdAt: file.mtime,
           updatedAt: file.mtime,
         }
@@ -802,8 +772,6 @@ export default function App() {
   const createDoc = useCallback(
     (wantRoot: string | null = null, wantDir = '') => {
       flushSave()
-      setPrefs((p) => (p.panel === 'docs' ? p : { ...p, panel: 'docs' }))
-
       const target = wantRoot
 
       if (!target) {
@@ -873,7 +841,6 @@ export default function App() {
       const meta = await renameDocFile(target.root, target.path, clean)
       if (!meta) return
       const newId = `${meta.root}|${meta.path}`
-      moveDocReadOnly(id, newId)
       if (dirtyIdsRef.current.delete(id)) dirtyIdsRef.current.add(newId)
       const synced = docsRef.current.map((d) =>
         d.id === id ? { ...d, id: newId, path: meta.path, title: meta.title } : d,
@@ -941,7 +908,6 @@ export default function App() {
       flushSave()
       dirtyIdsRef.current.delete(id)
       const target = docsRef.current.find((d) => d.id === id)
-      saveDocReadOnly(id, null)
       if (target && isOnDisk(target)) void removeDocFile(target.root, target.path)
       else if (target) void removeDraftFile(target.id)
 
@@ -988,7 +954,6 @@ export default function App() {
       }
 
       targetIds.forEach((id) => dirtyIdsRef.current.delete(id))
-      targetIds.forEach((id) => saveDocReadOnly(id, null))
       const activeIndex = docsRef.current.findIndex((doc) => doc.id === activeIdRef.current)
       const activeWasDeleted = targetIds.has(activeIdRef.current)
       const rest = docsRef.current.filter((doc) => !targetIds.has(doc.id))
@@ -1094,17 +1059,10 @@ export default function App() {
         return
       }
       const id = `${opened.file.root}|${opened.file.path}`
-      saveDocReadOnly(id, true)
       setRoots(opened.state.roots)
-      setPrefs((current) => ({ ...current, sidebar: true, panel: 'docs', focus: false }))
       setShowLauncher(false)
       await loadDocs(opened.state.roots, id)
-      const updated = docsRef.current.map((doc) =>
-        doc.id === id ? { ...doc, readOnlyOverride: true } : doc,
-      )
-      docsRef.current = updated
-      setDocs(updated)
-      pushToast(`已以只读方式打开「${opened.file.title}」`)
+      pushToast(`已打开「${opened.file.title}」`)
     },
     [flushSave, loadDocs, pushToast],
   )
@@ -1181,21 +1139,6 @@ export default function App() {
     const md = docsRef.current.find((doc) => doc.id === activeIdRef.current)?.markdown ?? ''
     const name = `${safeFileName(titleRef.current)}.md`
     if (await saveTextNative(name, md)) pushToast('已导出 Markdown 文件')
-  }, [flushSave, pushToast])
-
-  const handleCopyMd = useCallback(async () => {
-    flushSave(false)
-    const md = docsRef.current.find((doc) => doc.id === activeIdRef.current)?.markdown ?? ''
-    let ok = false
-    try {
-      if (navigator.clipboard?.writeText) {
-        await navigator.clipboard.writeText(md)
-        ok = true
-      }
-    } catch {
-      ok = false
-    }
-    pushToast(ok ? 'Markdown 已复制到剪贴板' : '复制失败')
   }, [flushSave, pushToast])
 
   /** 全部文档 → 一个 ZIP，每篇一个 .md */
@@ -1322,15 +1265,8 @@ export default function App() {
         event.preventDefault()
         manualSave()
       } else if (event.shiftKey && event.altKey && key === 'e') {
-        // 必须在 Shift+E 之前判断，否则会被上面的分支吃掉
         event.preventDefault()
         void handleExportAll()
-      } else if (event.shiftKey && key === 'e') {
-        event.preventDefault()
-        void handleExport()
-      } else if (event.shiftKey && key === 'c') {
-        event.preventDefault()
-        void handleCopyMd()
       } else if (event.key === '\\') {
         // 折叠 / 展开侧栏
         event.preventDefault()
@@ -1342,7 +1278,7 @@ export default function App() {
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [createDoc, handleExport, handleExportAll, handleCopyMd, manualSave, toggleEditorMode])
+  }, [createDoc, handleExportAll, manualSave, toggleEditorMode])
 
   /* ---------------- 原生菜单 ---------------- */
   useEffect(() => {
@@ -1374,9 +1310,9 @@ export default function App() {
 
   const resizeSidebar = useCallback((event: ReactPointerEvent<HTMLDivElement>) => {
     if (!event.currentTarget.hasPointerCapture(event.pointerId)) return
-    const availableMax = Math.max(180, Math.min(480, window.innerWidth - 360))
+    const availableMax = Math.max(160, Math.min(420, window.innerWidth - 360))
     const next = Math.round(
-      Math.min(availableMax, Math.max(180, sidebarResizeRef.current.startWidth + event.clientX - sidebarResizeRef.current.startX)),
+      Math.min(availableMax, Math.max(160, sidebarResizeRef.current.startWidth + event.clientX - sidebarResizeRef.current.startX)),
     )
     setPrefs((current) => (current.sidebarWidth === next ? current : { ...current, sidebarWidth: next }))
   }, [])
@@ -1389,7 +1325,7 @@ export default function App() {
   }, [])
 
   const minutes = Math.max(1, Math.round(stats.words / 300))
-  const sidebarVisible = prefs.sidebar && !prefs.focus
+  const sidebarVisible = prefs.sidebar
   const onDisk = Boolean(currentDoc && isOnDisk(currentDoc))
   const workspaceLabel = useMemo(
     () => (roots.length > 0 ? roots.map((r) => r.name).join(' · ') : '未打开目录'),
@@ -1400,7 +1336,10 @@ export default function App() {
 
   return (
     <div
-      className={'app' + (prefs.focus ? ' is-focus' : '') + (resizingSidebar ? ' is-resizing-sidebar' : '')}
+      className={
+        'app'
+        + (resizingSidebar ? ' is-resizing-sidebar' : '')
+      }
       style={
         {
           '--sidebar-w': `${prefs.sidebarWidth}px`,
@@ -1410,19 +1349,16 @@ export default function App() {
     >
       {/* 顶栏 */}
       <header className="topbar">
-        <button
-          type="button"
-          className={'btn topbar-sidebar-toggle' + (prefs.sidebar ? ' is-active' : '')}
-          title="侧栏：文档列表与大纲"
+          <button
+            type="button"
+            className={'btn topbar-sidebar-toggle' + (prefs.sidebar ? ' is-active' : '')}
+            title="显示或隐藏文档列表"
           onClick={() => setPrefs((p) => ({ ...p, sidebar: !p.sidebar }))}
         >
-          <PanelLeft size={17} strokeWidth={2} />
+          <FolderTree size={17} strokeWidth={2} />
         </button>
 
-        <div
-          className={'current-doc' + (effectiveReadOnly ? ' is-readonly' : '')}
-          title={effectiveReadOnly ? '当前文档为只读' : '当前文档名称，点击即可修改'}
-        >
+        <div className="current-doc" title="当前文档名称，点击即可修改">
           <input
             ref={titleInputRef}
             className="doc-title"
@@ -1430,10 +1366,8 @@ export default function App() {
             placeholder="未命名文档"
             aria-label="当前文档名称，点击修改"
             disabled={!currentDoc}
-              readOnly={effectiveReadOnly}
-              onChange={(e) => {
-                if (effectiveReadOnlyRef.current) return
-                const next = e.target.value
+            onChange={(e) => {
+              const next = e.target.value
               const id = activeIdRef.current
               const nextDocs = docsRef.current.map((d) => (d.id === id ? { ...d, title: next } : d))
               docsRef.current = nextDocs
@@ -1446,31 +1380,6 @@ export default function App() {
         <div className="topbar-spacer" />
 
         <div className="topbar-actions">
-          <button
-            type="button"
-            className={'btn' + (prefs.focus ? ' is-active' : '')}
-            title="专注模式：隐藏一切干扰，只高亮当前段落"
-            onClick={() => setPrefs((p) => ({ ...p, focus: !p.focus }))}
-          >
-            <FocusIcon size={17} strokeWidth={2} />
-          </button>
-          <button
-            type="button"
-            className={'btn' + (prefs.typewriter ? ' is-active' : '')}
-            title="打字机模式：光标始终保持在视线上方 2/5 处"
-            onClick={() => setPrefs((p) => ({ ...p, typewriter: !p.typewriter }))}
-          >
-            <MoveVertical size={17} strokeWidth={2} />
-          </button>
-          <button
-            type="button"
-            className={'btn' + (prefs.readOnly ? ' is-active' : '')}
-            title={prefs.readOnly ? '关闭全局只读模式' : '开启全局只读模式'}
-            aria-pressed={prefs.readOnly}
-            onClick={() => setPrefs((p) => ({ ...p, readOnly: !p.readOnly }))}
-          >
-            <Lock size={16} strokeWidth={2} />
-          </button>
           {(!prefs.autoSave || !onDisk) && (
             <>
               <div className="divider-v" />
@@ -1490,9 +1399,6 @@ export default function App() {
           <button type="button" className="btn" title="设置：目录与图片的存储方式" onClick={() => setShowSettings(true)}>
             <SettingsIcon size={17} strokeWidth={2} />
           </button>
-          <button type="button" className="btn" title="快捷键 (F1)" onClick={() => setShowHelp(true)}>
-            <Keyboard size={17} strokeWidth={2} />
-          </button>
           <button
             type="button"
             className="btn"
@@ -1505,61 +1411,42 @@ export default function App() {
       </header>
 
       <div className="body">
-        {/* 侧栏：文档列表 / 大纲 */}
+        {/* 左侧栏：只放文档列表 */}
         <aside className={'sidebar' + (sidebarVisible ? '' : ' is-hidden')} aria-hidden={!sidebarVisible}>
-          <div className="sidebar-tabs" role="tablist">
-            <button
-              type="button"
-              role="tab"
-              aria-selected={prefs.panel === 'docs'}
-              className={'sidebar-tab' + (prefs.panel === 'docs' ? ' is-active' : '')}
-              onClick={() => setPrefs((p) => ({ ...p, panel: 'docs' }))}
-            >
+          <div className="sidebar-tabs">
+            <div className="sidebar-tab is-active">
               文档
               <span className="sidebar-tab-count" title={`所有已打开目录，共 ${docs.length} 篇文档`}>
                 {docs.length}
               </span>
-            </button>
-            <button
-              type="button"
-              role="tab"
-              aria-selected={prefs.panel === 'outline'}
-              className={'sidebar-tab' + (prefs.panel === 'outline' ? ' is-active' : '')}
-              onClick={() => setPrefs((p) => ({ ...p, panel: 'outline' }))}
-            >
-              大纲
-            </button>
+            </div>
           </div>
 
-          {prefs.panel === 'docs' ? (
-            <DocsPanel
-              docs={docs}
-              roots={roots}
-              folders={folders}
-              activeId={activeId}
-              onSelect={switchTo}
-              onCreate={createDoc}
-              onCreateFolder={(root, parent, name) => void createFolder(root, parent, name)}
-              onDeleteFolder={(root, path) => void deleteFolder(root, path)}
-              onExportFolder={(root, path) => void handleExportFolder(root, path)}
-              onRename={renameDoc}
-              onDelete={deleteDoc}
-              onDuplicate={duplicateDoc}
-              onReorder={reorderDocs}
-              onImportFiles={(files, root, dir) => void handleFiles(files, root, dir)}
-              onDetachRoot={(root) => void detachRoot(root)}
-            />
-          ) : (
-            <Outline items={headings} activeIndex={activeHeading} onJump={jumpTo} />
-          )}
+          <DocsPanel
+            docs={docs}
+            roots={roots}
+            folders={folders}
+            activeId={activeId}
+            onSelect={switchTo}
+            onCreate={createDoc}
+            onCreateFolder={(root, parent, name) => void createFolder(root, parent, name)}
+            onDeleteFolder={(root, path) => void deleteFolder(root, path)}
+            onExportFolder={(root, path) => void handleExportFolder(root, path)}
+            onRename={renameDoc}
+            onDelete={deleteDoc}
+            onDuplicate={duplicateDoc}
+            onReorder={reorderDocs}
+            onImportFiles={(files, root, dir) => void handleFiles(files, root, dir)}
+            onDetachRoot={(root) => void detachRoot(root)}
+          />
 
           <div
             className="sidebar-resizer"
             role="separator"
             aria-label="调整侧栏宽度"
             aria-orientation="vertical"
-            aria-valuemin={180}
-            aria-valuemax={480}
+            aria-valuemin={160}
+            aria-valuemax={420}
             aria-valuenow={prefs.sidebarWidth}
             tabIndex={0}
             title="拖拽调整侧栏宽度，双击恢复默认"
@@ -1567,66 +1454,69 @@ export default function App() {
             onPointerMove={resizeSidebar}
             onPointerUp={endSidebarResize}
             onPointerCancel={endSidebarResize}
-            onDoubleClick={() => setPrefs((p) => ({ ...p, sidebarWidth: 248 }))}
+            onDoubleClick={() => setPrefs((p) => ({ ...p, sidebarWidth: 210 }))}
             onKeyDown={(event) => {
               if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return
               event.preventDefault()
               const delta = event.key === 'ArrowLeft' ? -12 : 12
-              setPrefs((p) => ({ ...p, sidebarWidth: Math.min(480, Math.max(180, p.sidebarWidth + delta)) }))
+              setPrefs((p) => ({ ...p, sidebarWidth: Math.min(420, Math.max(160, p.sidebarWidth + delta)) }))
             }}
           />
 
         </aside>
 
-        {/* 主编辑区 */}
-        <main className="main">
-          {!prefs.focus && (
-            <Toolbar
-              editor={editor}
-              readOnly={effectiveReadOnly}
-              sourceMode={prefs.editorMode === 'source'}
-              documentReadOnlyOverride={currentDoc?.readOnlyOverride ?? null}
-              hasDocument={Boolean(currentDoc)}
-              onToggleSource={toggleEditorMode}
-              onCycleDocumentReadOnly={cycleDocumentReadOnly}
-              onCopyMarkdown={() => void handleCopyMd()}
-              onExportMarkdown={() => void handleExport()}
-              onInsertImage={() => imageRef.current?.click()}
-            />
-          )}
-          <div className="scroll-area" ref={setScrollNode}>
-            <div className={'page' + (prefs.editorMode === 'source' ? ' is-source' : '')}>
-              <div className="editor-shell">
-                {prefs.editorMode === 'source' ? (
-                  <Suspense fallback={<div className="source-editor-loading">正在载入源码编辑器…</div>}>
-                    <SourceEditor
-                      key={activeId}
-                      ref={sourceEditorRef}
-                      value={currentDoc?.markdown ?? ''}
-                      readOnly={effectiveReadOnly}
-                      onChange={handleSourceChange}
-                      onSelectionChange={(position) =>
-                        setActiveHeading(activeIndexFor(headingsRef.current, position))
-                      }
-                      onImages={(files) => void insertImages(files)}
-                      onToggleMode={toggleEditorMode}
-                    />
-                  </Suspense>
-                ) : (
-                  <EditorContent editor={editor} />
-                )}
+        {/* 工作区：工具栏横跨正文和右侧大纲 */}
+        <section className="workspace">
+          <Toolbar
+            editor={editor}
+            sourceMode={prefs.editorMode === 'source'}
+            outlineVisible={prefs.outlineVisible}
+            onToggleSource={toggleEditorMode}
+            onToggleOutline={() => setPrefs((current) => ({ ...current, outlineVisible: !current.outlineVisible }))}
+            onInsertImage={() => imageRef.current?.click()}
+          />
+          <div className="workspace-body">
+            <main className="main">
+              <div className="scroll-area" ref={setScrollNode}>
+                <div className={'page' + (prefs.editorMode === 'source' ? ' is-source' : '')}>
+                  <div className="editor-shell">
+                    {prefs.editorMode === 'source' ? (
+                      <Suspense fallback={<div className="source-editor-loading">正在载入源码编辑器…</div>}>
+                        <SourceEditor
+                          key={activeId}
+                          ref={sourceEditorRef}
+                          value={currentDoc?.markdown ?? ''}
+                          onChange={handleSourceChange}
+                          onSelectionChange={(position) => {
+                            setActiveHeading(activeIndexFor(headingsRef.current, position))
+                          }}
+                          onImages={(files) => void insertImages(files)}
+                          onToggleMode={toggleEditorMode}
+                        />
+                      </Suspense>
+                    ) : (
+                      <EditorContent editor={editor} />
+                    )}
+                  </div>
+                </div>
               </div>
-            </div>
-          </div>
 
-          {/* 一篇文档都没有时盖一层，避免对着空白编辑器发呆 */}
-          {docs.length === 0 && (
-            <div className="empty-stage">
-              <FileText size={22} strokeWidth={1.8} />
-              <p className="empty-stage-title">这里还没有文档</p>
-            </div>
-          )}
-        </main>
+              {/* 一篇文档都没有时盖一层，避免对着空白编辑器发呆 */}
+              {docs.length === 0 && (
+                <div className="empty-stage">
+                  <FileText size={22} strokeWidth={1.8} />
+                  <p className="empty-stage-title">这里还没有文档</p>
+                </div>
+              )}
+            </main>
+
+            {prefs.outlineVisible && (
+              <aside className="outline-sidebar" aria-label="文档大纲侧栏">
+                <Outline items={headings} activeIndex={activeHeading} onJump={jumpTo} />
+              </aside>
+            )}
+          </div>
+        </section>
       </div>
 
       {/* 状态栏 */}
@@ -1677,7 +1567,7 @@ export default function App() {
         <div className="markdown-drop-overlay" aria-hidden="true">
           <div>
             <FileText size={30} strokeWidth={1.7} />
-            <strong>松开以只读方式打开 Markdown</strong>
+            <strong>松开以打开 Markdown</strong>
             <span>将同时打开此文档所在目录</span>
           </div>
         </div>

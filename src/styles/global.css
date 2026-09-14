@@ -7,7 +7,8 @@
   --font-mono: 'JetBrains Mono', 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo,
     'Courier New', monospace;
 
-  --sidebar-w: 248px;
+  --sidebar-w: 210px;
+  --outline-w: 200px;
   --radius-sm: 8px;
   --radius: 12px;
   --radius-lg: 16px;
@@ -105,6 +106,20 @@ textarea {
   min-height: 0;
 }
 
+.workspace {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.workspace-body {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  position: relative;
+}
+
 /* ============================================================
    顶栏
    ============================================================ */
@@ -151,13 +166,6 @@ textarea {
   border-color: var(--accent);
   background: var(--surface);
   box-shadow: 0 0 0 3px var(--accent-soft);
-}
-.current-doc.is-readonly {
-  border-color: color-mix(in srgb, var(--accent) 38%, var(--border));
-  background: color-mix(in srgb, var(--accent-soft) 45%, var(--surface-2));
-}
-.current-doc.is-readonly .doc-title {
-  cursor: default;
 }
 .doc-title {
   width: 100%;
@@ -316,12 +324,6 @@ textarea {
   font-size: 12px;
   font-weight: 600;
 }
-.toolbar.is-readonly .toolbar-inner {
-  opacity: 0.42;
-  pointer-events: none;
-  user-select: none;
-}
-
 .tool-group {
   display: flex;
   align-items: center;
@@ -412,7 +414,7 @@ textarea {
 }
 
 /* ============================================================
-   侧栏（大纲）
+   左侧文档栏
    ============================================================ */
 .sidebar {
   position: relative;
@@ -482,12 +484,8 @@ textarea {
   color: var(--text-3);
   font-size: 13px;
   font-weight: 550;
-  cursor: pointer;
+  cursor: default;
   transition: background 0.14s var(--ease), color 0.14s var(--ease);
-}
-.sidebar-tab:hover {
-  background: var(--surface-2);
-  color: var(--text-2);
 }
 .sidebar-tab.is-active {
   background: var(--surface-2);
@@ -1070,13 +1068,6 @@ textarea {
   padding: 4px 10px 16px;
 }
 
-.outline-empty {
-  padding: 10px 8px;
-  font-size: 13px;
-  color: var(--text-3);
-  line-height: 1.7;
-}
-
 .outline-item {
   width: 100%;
   display: block;
@@ -1118,6 +1109,22 @@ textarea {
   font-size: 12.5px;
 }
 
+/* ---------- 右侧大纲栏 ---------- */
+.outline-sidebar {
+  flex: 0 0 var(--outline-w);
+  width: var(--outline-w);
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border-left: 1px solid var(--border);
+  background: color-mix(in srgb, var(--surface) 45%, transparent);
+}
+
+.outline-sidebar .outline {
+  padding: 12px 12px 16px;
+}
+
 /* ============================================================
    主区域
    ============================================================ */
@@ -1136,17 +1143,14 @@ textarea {
 }
 
 .page {
-  max-width: 780px;
+  width: 100%;
+  max-width: none;
   margin: 0 auto;
-  padding: 44px 40px 45vh;
+  padding: 44px 72px 45vh;
   transition: max-width 0.22s var(--ease), padding 0.22s var(--ease);
 }
 .page.is-source {
-  max-width: 960px;
-}
-
-.is-focus .page {
-  padding-top: 56px;
+  padding-inline: 44px;
 }
 
 /* ============================================================

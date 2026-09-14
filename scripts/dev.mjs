@@ -1,11 +1,10 @@
 /**
  * 一条命令启动桌面版：起 vite dev server → 编译主进程 → 拉起 Electron。
  *
- *   npm run dev:all
- *   npm start          // shortcut kept for compatibility
+ *   npm run electron:dev
  *
  * 关掉窗口（或 Ctrl+C）后三样一起收干净，不留后台进程。
- * 已经开着 dev server 只想重启窗口的话用 `npm run electron:dev`。
+ * 已经开着 dev server 只想重启窗口的话用 `npm run electron:window`。
  */
 import { spawn, spawnSync } from 'node:child_process'
 import { readFileSync } from 'node:fs'

@@ -11,14 +11,12 @@
     "build": "tsc --noEmit && vite build",
     "typecheck": "tsc --noEmit",
     "check:md": "node --experimental-strip-types scripts/check-markdown.mts",
-    "start": "node scripts/dev.mjs",
-    "dev:all": "node scripts/dev.mjs",
     "electron:compile": "tsc -p electron/tsconfig.json && node scripts/electron-cjs.mjs",
-    "electron:dev": "npm run electron:compile && node scripts/run-electron.mjs .",
+    "electron:dev": "node scripts/dev.mjs",
+    "electron:window": "npm run electron:compile && node scripts/run-electron.mjs .",
     "electron:unpacked": "npm run build && npm run electron:compile && electron-builder --win --dir",
     "electron:installer": "npm run build && npm run electron:compile && electron-builder --win nsis",
     "electron:portable": "npm run build && npm run electron:compile && electron-builder --win portable",
-    "electron:build": "npm run electron:unpacked",
     "electron:dist": "npm run build && npm run electron:compile && electron-builder --win"
   },
   "dependencies": {

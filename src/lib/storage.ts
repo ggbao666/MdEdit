@@ -9,8 +9,6 @@ export interface DocRecord {
   html: string
   /** 原始 Markdown；源码模式直接编辑并保存这一份内容 */
   markdown: string
-  /** null 跟随全局；true 强制只读；false 强制可编辑 */
-  readOnlyOverride: boolean | null
   /** 列表页展示的纯文本摘要，保存时算好，避免渲染时反复解析 HTML */
   excerpt: string
   /** 所属目录的绝对路径；为空表示还没落盘的内存文档 */
@@ -70,7 +68,6 @@ export function createMemoryDoc(title = '未命名文档', html = '', markdown =
     title,
     html,
     markdown,
-    readOnlyOverride: null,
     excerpt: htmlToExcerpt(html),
     root: '',
     path: '',
@@ -86,7 +83,6 @@ export function createDoc(title = '未命名文档', html = '', root = '', path 
     title,
     html,
     markdown,
-    readOnlyOverride: null,
     excerpt: htmlToExcerpt(html),
     root,
     path,
@@ -129,7 +125,7 @@ export function safeFileName(name: string): string {
 const KEY_THEME = 'tiptora:theme'
 const KEY_PREFS = 'tiptora:prefs'
 const KEY_ORDER = 'tiptora:order'
-const KEY_DOC_READ_ONLY = 'tiptora:doc-readonly'
+const KEY_PANELS_HIDDEN_DEFAULT = 'tiptora:panels-hidden-default-v1'
 
 export interface Prefs {
   sidebar: boolean
@@ -139,12 +135,8 @@ export interface Prefs {
   editorFontSize: number
   /** 当前编辑模式；切换文档后保持不变 */
   editorMode: 'rich' | 'source'
-  focus: boolean
-  typewriter: boolean
-  /** 只读模式：锁定正文、标题和格式工具 */
-  readOnly: boolean
-  /** 侧栏当前视图：文档列表 or 大纲 */
-  panel: 'docs' | 'outline'
+  /** 是否显示右侧文档大纲 */
+  outlineVisible: boolean
   /**
    * 图片怎么存：
    * - file：原图写进资源目录，Markdown 里用相对路径引用
@@ -163,14 +155,11 @@ export interface Prefs {
 }
 
 const DEFAULT_PREFS: Prefs = {
-  sidebar: true,
-  sidebarWidth: 248,
+  sidebar: false,
+  sidebarWidth: 210,
   editorFontSize: 16.5,
   editorMode: 'rich',
-  focus: false,
-  typewriter: false,
-  readOnly: false,
-  panel: 'docs',
+  outlineVisible: false,
   imageMode: 'file',
   autoSave: true,
   autoSaveDelay: 700,
@@ -179,39 +168,46 @@ const DEFAULT_PREFS: Prefs = {
 
 export function loadPrefs(): Prefs {
   try {
+    const applyHiddenPanelDefaults = localStorage.getItem(KEY_PANELS_HIDDEN_DEFAULT) !== '1'
+    if (applyHiddenPanelDefaults) localStorage.setItem(KEY_PANELS_HIDDEN_DEFAULT, '1')
     const raw = localStorage.getItem(KEY_PREFS)
     if (!raw) return DEFAULT_PREFS
-    const parsed = JSON.parse(raw) as Partial<Prefs>
-    const panel = parsed.panel === 'docs' || parsed.panel === 'outline' ? parsed.panel : DEFAULT_PREFS.panel
+    const parsed = JSON.parse(raw) as Partial<Prefs> & { panel?: 'docs' | 'outline' }
     const imageMode = parsed.imageMode === 'inline' ? 'inline' : 'file'
     const autoSave = typeof parsed.autoSave === 'boolean' ? parsed.autoSave : DEFAULT_PREFS.autoSave
     const sidebarWidth =
       typeof parsed.sidebarWidth === 'number' && Number.isFinite(parsed.sidebarWidth)
-        ? Math.min(480, Math.max(180, Math.round(parsed.sidebarWidth)))
+        ? Math.min(420, Math.max(160, Math.round(parsed.sidebarWidth) === 248 ? 210 : Math.round(parsed.sidebarWidth)))
         : DEFAULT_PREFS.sidebarWidth
     const editorFontSize =
       typeof parsed.editorFontSize === 'number' && Number.isFinite(parsed.editorFontSize)
         ? Math.min(24, Math.max(12, Math.round(parsed.editorFontSize * 2) / 2))
         : DEFAULT_PREFS.editorFontSize
     const editorMode = parsed.editorMode === 'source' ? 'source' : 'rich'
-    const readOnly = typeof parsed.readOnly === 'boolean' ? parsed.readOnly : DEFAULT_PREFS.readOnly
+    const outlineVisible = applyHiddenPanelDefaults
+      ? false
+      : typeof parsed.outlineVisible === 'boolean'
+        ? parsed.outlineVisible
+        : parsed.panel === 'outline' || DEFAULT_PREFS.outlineVisible
     const autoSaveDelay =
       typeof parsed.autoSaveDelay === 'number' && Number.isFinite(parsed.autoSaveDelay)
         ? Math.min(60_000, Math.max(100, Math.round(parsed.autoSaveDelay)))
         : DEFAULT_PREFS.autoSaveDelay
     const assetDir = typeof parsed.assetDir === 'string' && parsed.assetDir.trim() ? parsed.assetDir : DEFAULT_PREFS.assetDir
     return {
-      ...DEFAULT_PREFS,
-      ...parsed,
-      panel,
+      sidebar: applyHiddenPanelDefaults
+        ? false
+        : typeof parsed.sidebar === 'boolean'
+          ? parsed.sidebar
+          : DEFAULT_PREFS.sidebar,
+      sidebarWidth,
+      editorFontSize,
+      editorMode,
+      outlineVisible,
       imageMode,
       autoSave,
       autoSaveDelay,
       assetDir,
-      sidebarWidth,
-      editorFontSize,
-      editorMode,
-      readOnly,
     }
   } catch {
     return DEFAULT_PREFS
@@ -224,31 +220,6 @@ export function savePrefs(prefs: Prefs): void {
   } catch {
     /* ignore */
   }
-}
-
-export function loadDocReadOnly(id: string): boolean | null {
-  try {
-    const value = localStorage.getItem(`${KEY_DOC_READ_ONLY}:${id}`)
-    return value === 'true' ? true : value === 'false' ? false : null
-  } catch {
-    return null
-  }
-}
-
-export function saveDocReadOnly(id: string, value: boolean | null): void {
-  try {
-    const key = `${KEY_DOC_READ_ONLY}:${id}`
-    if (value === null) localStorage.removeItem(key)
-    else localStorage.setItem(key, String(value))
-  } catch {
-    /* 忽略本地偏好写入失败 */
-  }
-}
-
-export function moveDocReadOnly(from: string, to: string): void {
-  const value = loadDocReadOnly(from)
-  saveDocReadOnly(to, value)
-  saveDocReadOnly(from, null)
 }
 
 export function loadTheme(): Theme {

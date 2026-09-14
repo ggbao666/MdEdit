@@ -10,6 +10,8 @@ const packageInfo = JSON.parse(readFileSync(join(app.getAppPath(), 'package.json
 }
 const APP_NAME = packageInfo.productName || packageInfo.name
 app.setName(APP_NAME)
+// 开发版与已安装的正式版使用独立配置和单实例锁，两者可以同时运行。
+if (isDev) app.setPath('userData', join(app.getPath('appData'), `${APP_NAME}-dev`))
 /** 开发态连 vite dev server，生产态读 dist 的静态产物 */
 const DEV_URL = process.env.VITE_DEV_URL ?? 'http://127.0.0.1:5173'
 
@@ -305,7 +307,6 @@ function buildMenu(): Menu {
         { type: 'separator' },
         {
           label: '导出为 .md…',
-          accelerator: 'CmdOrCtrl+Shift+E',
           click: () => mainWindow?.webContents.send('menu:export-md'),
         },
         {

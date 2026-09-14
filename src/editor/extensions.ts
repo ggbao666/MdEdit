@@ -6,7 +6,7 @@ import { TableCell } from '@tiptap/extension-table-cell'
 import { TableHeader } from '@tiptap/extension-table-header'
 import { TableRow } from '@tiptap/extension-table-row'
 import type { Extensions } from '@tiptap/core'
-import { CharacterCount, Focus, Placeholder } from '@tiptap/extensions'
+import { CharacterCount, Placeholder } from '@tiptap/extensions'
 import StarterKit from '@tiptap/starter-kit'
 import { lowlight } from './lowlight'
 import { TiptoraCodeBlock } from './codeBlock'
@@ -58,9 +58,6 @@ export function createExtensions(): Extensions {
 
     // 图片：只存相对引用，导出时就是可移植的 ![](相对路径)
     TiptoraImage,
-
-    // 专注模式：给光标所在的顶层块加 .has-focus
-    Focus.configure({ className: 'has-focus', mode: 'shallowest' }),
 
     Placeholder.configure({
       showOnlyCurrent: true,

@@ -82,8 +82,6 @@ npm run electron:unpacked
 | 打开工作区目录 | `Ctrl + O` | `⌘ + O` |
 | 打开 Markdown 文件 | `Ctrl + Shift + O` | `⌘ + Shift + O` |
 | 新建文档 | `Ctrl + Alt + N` | `⌘ + Alt + N` |
-| 导出当前文档 | `Ctrl + Shift + E` | `⌘ + Shift + E` |
-| 复制 Markdown | `Ctrl + Shift + C` | `⌘ + Shift + C` |
 | 折叠或展开侧栏 | `Ctrl + \` | `⌘ + \` |
 | 打开设置 | `Ctrl + ,` | `⌘ + ,` |
 | 打开快捷键面板 | `Ctrl + /` | `⌘ + /` |

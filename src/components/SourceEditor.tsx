@@ -1,6 +1,6 @@
 import { forwardRef, useEffect, useImperativeHandle, useRef } from 'react'
 import { markdown } from '@codemirror/lang-markdown'
-import { Compartment, EditorState, Prec } from '@codemirror/state'
+import { EditorState, Prec } from '@codemirror/state'
 import { EditorView, keymap } from '@codemirror/view'
 import { basicSetup } from 'codemirror'
 
@@ -12,7 +12,6 @@ export interface SourceEditorHandle {
 
 interface SourceEditorProps {
   value: string
-  readOnly: boolean
   onChange: (value: string) => void
   onSelectionChange: (position: number) => void
   onImages: (files: File[]) => void
@@ -31,7 +30,6 @@ const sourceTheme = EditorView.theme({
     padding: '0',
     fontFamily: 'var(--font-mono)',
     lineHeight: '1.75',
-    caretColor: 'var(--accent)',
   },
   '.cm-line': { padding: '0 4px' },
   '.cm-gutters': {
@@ -45,7 +43,6 @@ const sourceTheme = EditorView.theme({
     backgroundColor: 'var(--accent-ring) !important',
   },
   '&.cm-focused': { outline: 'none' },
-  '.cm-cursor, .cm-dropCursor': { borderLeftColor: 'var(--accent)' },
 })
 
 function imageFiles(list: FileList | null): File[] {
@@ -56,13 +53,12 @@ function imageFiles(list: FileList | null): File[] {
 }
 
 const SourceEditor = forwardRef<SourceEditorHandle, SourceEditorProps>(function SourceEditor(
-  { value, readOnly, onChange, onSelectionChange, onImages, onToggleMode },
+  { value, onChange, onSelectionChange, onImages, onToggleMode },
   ref,
 ) {
   const hostRef = useRef<HTMLDivElement>(null)
   const viewRef = useRef<EditorView | null>(null)
   const applyingExternalValue = useRef(false)
-  const readOnlyCompartment = useRef(new Compartment())
   const callbacksRef = useRef({ onChange, onSelectionChange, onImages, onToggleMode })
   callbacksRef.current = { onChange, onSelectionChange, onImages, onToggleMode }
 
@@ -77,7 +73,7 @@ const SourceEditor = forwardRef<SourceEditorHandle, SourceEditorProps>(function 
     },
     insertText: (text) => {
       const view = viewRef.current
-      if (!view || readOnly) return
+      if (!view) return
       const { from, to } = view.state.selection.main
       view.dispatch({
         changes: { from, to, insert: text },
@@ -86,7 +82,7 @@ const SourceEditor = forwardRef<SourceEditorHandle, SourceEditorProps>(function 
       })
       view.focus()
     },
-  }), [readOnly])
+  }), [])
 
   useEffect(() => {
     const host = hostRef.current
@@ -110,10 +106,6 @@ const SourceEditor = forwardRef<SourceEditorHandle, SourceEditorProps>(function 
           markdown(),
           EditorView.lineWrapping,
           sourceTheme,
-          readOnlyCompartment.current.of([
-            EditorState.readOnly.of(readOnly),
-            EditorView.editable.of(!readOnly),
-          ]),
           EditorView.updateListener.of((update) => {
             if (update.docChanged && !applyingExternalValue.current) {
               callbacksRef.current.onChange(update.state.doc.toString())
@@ -142,12 +134,13 @@ const SourceEditor = forwardRef<SourceEditorHandle, SourceEditorProps>(function 
       }),
     })
     viewRef.current = view
-    requestAnimationFrame(() => view.focus())
+    callbacksRef.current.onSelectionChange(view.state.selection.main.head)
+    requestAnimationFrame(() => requestAnimationFrame(() => view.focus()))
     return () => {
       view.destroy()
       viewRef.current = null
     }
-    // EditorView 的生命周期只绑定宿主节点；内容和只读状态分别在下面同步。
+    // EditorView 的生命周期只绑定宿主节点；内容在下面单独同步。
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -163,17 +156,6 @@ const SourceEditor = forwardRef<SourceEditorHandle, SourceEditorProps>(function 
       applyingExternalValue.current = false
     }
   }, [value])
-
-  useEffect(() => {
-    const view = viewRef.current
-    if (!view) return
-    view.dispatch({
-      effects: readOnlyCompartment.current.reconfigure([
-        EditorState.readOnly.of(readOnly),
-        EditorView.editable.of(!readOnly),
-      ]),
-    })
-  }, [readOnly])
 
   return <div className="source-editor" ref={hostRef} />
 })

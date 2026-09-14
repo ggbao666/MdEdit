@@ -7,11 +7,7 @@ import {
   ChevronDown,
   Code,
   CodeXml,
-  Copy,
-  Download,
   FileCode2,
-  FileLock,
-  FilePenLine,
   Heading1,
   Heading2,
   Heading3,
@@ -24,6 +20,7 @@ import {
   List,
   ListChecks,
   ListOrdered,
+  ListTree,
   Minus,
   Pilcrow,
   Quote,
@@ -41,13 +38,9 @@ interface ToolProps {
 interface ToolbarProps extends ToolProps {
   onInsertImage: () => void
   onToggleSource: () => void
-  onCycleDocumentReadOnly: () => void
-  onCopyMarkdown: () => void
-  onExportMarkdown: () => void
-  readOnly: boolean
+  onToggleOutline: () => void
   sourceMode: boolean
-  documentReadOnlyOverride: boolean | null
-  hasDocument: boolean
+  outlineVisible: boolean
 }
 
 function ToolButton({
@@ -285,13 +278,9 @@ export default function Toolbar({
   editor,
   onInsertImage,
   onToggleSource,
-  onCycleDocumentReadOnly,
-  onCopyMarkdown,
-  onExportMarkdown,
-  readOnly,
+  onToggleOutline,
   sourceMode,
-  documentReadOnlyOverride,
-  hasDocument,
+  outlineVisible,
 }: ToolbarProps) {
   const icon = { size: 16, strokeWidth: 2 } as const
 
@@ -303,14 +292,14 @@ export default function Toolbar({
   })
 
   return (
-    <div className={'toolbar' + (readOnly ? ' is-readonly' : '')} aria-disabled={readOnly}>
+    <div className="toolbar">
       <div className="toolbar-inner">
         {sourceMode ? (
           <>
             <span className="source-toolbar-label">Markdown 源码</span>
             <Sep />
             <Group>
-              <ToolButton disabled={readOnly} title="插入图片（也可粘贴或拖入）" onClick={onInsertImage}>
+              <ToolButton title="插入图片（也可粘贴或拖入）" onClick={onInsertImage}>
                 <ImagePlus {...icon} />
               </ToolButton>
             </Group>
@@ -434,32 +423,11 @@ export default function Toolbar({
           <FileCode2 {...icon} />
         </ToolButton>
         <ToolButton
-          title={
-            documentReadOnlyOverride === null
-              ? `文档只读：跟随全局（当前${readOnly ? '只读' : '可编辑'}），点击强制只读`
-              : documentReadOnlyOverride
-                ? '文档只读：强制只读，点击改为强制可编辑'
-                : '文档只读：强制可编辑，点击恢复跟随全局'
-          }
-          active={documentReadOnlyOverride !== null}
-          disabled={!hasDocument}
-          onClick={onCycleDocumentReadOnly}
+          title={outlineVisible ? '隐藏右侧大纲' : '显示右侧大纲'}
+          active={outlineVisible}
+          onClick={onToggleOutline}
         >
-          {readOnly ? <FileLock {...icon} /> : <FilePenLine {...icon} />}
-        </ToolButton>
-        <ToolButton
-          title="复制当前文档的 Markdown (Ctrl/⌘ + Shift + C)"
-          disabled={!hasDocument}
-          onClick={onCopyMarkdown}
-        >
-          <Copy {...icon} />
-        </ToolButton>
-        <ToolButton
-          title="导出当前文档为 Markdown (Ctrl/⌘ + Shift + E)"
-          disabled={!hasDocument}
-          onClick={onExportMarkdown}
-        >
-          <Download {...icon} />
+          <ListTree {...icon} />
         </ToolButton>
       </div>
     </div>
