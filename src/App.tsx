@@ -50,6 +50,7 @@ import {
   removeDocFile,
   removeFolder as removeWorkspaceFolder,
   renameDocFile,
+  renameFolder as renameWorkspaceFolder,
   saveDocAs,
   setActiveRoot,
   writeAssetFile,
@@ -112,6 +113,8 @@ export default function App() {
   const [prefs, setPrefs] = useState<Prefs>(loadPrefs)
   const [docs, setDocs] = useState<DocRecord[]>([])
   const [activeId, setActiveId] = useState('')
+  /** 新建后让侧栏中的文件名原地进入编辑态；顶部标题框只用于平常修改。 */
+  const [newDocEditId, setNewDocEditId] = useState<string | null>(null)
   /** 已挂载的目录，文档列表按它分组 */
   const [roots, setRoots] = useState<WorkspaceInfo[]>([])
   const [folders, setFolders] = useState<FolderMeta[]>([])
@@ -150,8 +153,6 @@ export default function App() {
   const sourceEditorRef = useRef<SourceEditorHandle>(null)
   /** 避免只切换模式、未改富文本时把原始 Markdown 重新格式化。 */
   const richChangedRef = useRef(false)
-  /** 编辑器重建后是否要把焦点交给标题输入框（新建 / 导入文档时） */
-  const pendingTitleFocus = useRef(false)
   /** 编辑器重建后是否聚焦到正文开头（切换 / 删除 / 副本文档时） */
   const pendingEditorFocus = useRef(false)
   const pendingSourceFocus = useRef(false)
@@ -610,11 +611,7 @@ export default function App() {
     if (prefs.editorMode === 'source') refreshSource(currentDoc?.markdown ?? '')
     else refreshAll(editor)
 
-    if (pendingTitleFocus.current) {
-      pendingTitleFocus.current = false
-      titleInputRef.current?.focus()
-      titleInputRef.current?.select()
-    } else if (pendingEditorFocus.current && prefs.editorMode === 'rich') {
+    if (pendingEditorFocus.current && prefs.editorMode === 'rich') {
       pendingEditorFocus.current = false
       let mountPasses = 0
       const focusDocumentStart = () => {
@@ -782,7 +779,7 @@ export default function App() {
         setActiveId(doc.id)
         setSaveState('idle')
         void writeDraftFile(doc.id, doc.title, '')
-        pendingTitleFocus.current = true
+        setNewDocEditId(doc.id)
         pushToast('已新建文档（还没保存到目录）')
         return
       }
@@ -804,7 +801,7 @@ export default function App() {
         activeIdRef.current = record.id
         setActiveId(record.id)
         setSaveState('idle')
-        pendingTitleFocus.current = true
+        setNewDocEditId(record.id)
         pushToast('已新建文档')
       })()
     },
@@ -812,14 +809,58 @@ export default function App() {
   )
 
   const createFolder = useCallback(
-    async (root: string, parent: string, name: string) => {
+    async (root: string, parent: string, name: string): Promise<FolderMeta | null> => {
       const folder = await createWorkspaceFolder(root, parent, name)
       if (!folder) {
         pushToast('新建文件夹失败，请检查名称或目录权限')
-        return
+        return null
       }
       setFolders((prev) => [...prev.filter((item) => !(item.root === folder.root && item.path === folder.path)), folder])
       pushToast(`已新建文件夹「${folder.name}」`)
+      return folder
+    },
+    [pushToast],
+  )
+
+  const renameFolder = useCallback(
+    async (root: string, from: string, name: string): Promise<FolderMeta | null> => {
+      const folder = await renameWorkspaceFolder(root, from, name)
+      if (!folder) {
+        pushToast('重命名文件夹失败，请检查名称或目录权限')
+        return null
+      }
+
+      const oldPrefix = `${from}/`
+      const remapPath = (path: string) => folder.path + path.slice(from.length)
+      setFolders((prev) =>
+        prev.map((item) => {
+          if (item.root !== root || (item.path !== from && !item.path.startsWith(oldPrefix))) return item
+          const path = remapPath(item.path)
+          return { ...item, path, name: item.path === from ? folder.name : item.name }
+        }),
+      )
+
+      const idMap = new Map<string, string>()
+      const nextDocs = docsRef.current.map((doc) => {
+        if (doc.root !== root || !doc.path.startsWith(oldPrefix)) return doc
+        const path = remapPath(doc.path)
+        const id = `${root}|${path}`
+        idMap.set(doc.id, id)
+        return { ...doc, id, path }
+      })
+      docsRef.current = nextDocs
+      setDocs(nextDocs)
+
+      for (const [oldId, newId] of idMap) {
+        if (dirtyIdsRef.current.delete(oldId)) dirtyIdsRef.current.add(newId)
+      }
+      const nextActiveId = idMap.get(activeIdRef.current)
+      if (nextActiveId) {
+        activeIdRef.current = nextActiveId
+        setActiveId(nextActiveId)
+      }
+      pushToast(`已重命名文件夹为「${folder.name}」`)
+      return folder
     },
     [pushToast],
   )
@@ -1427,9 +1468,11 @@ export default function App() {
             roots={roots}
             folders={folders}
             activeId={activeId}
+            editRequestId={newDocEditId}
             onSelect={switchTo}
             onCreate={createDoc}
-            onCreateFolder={(root, parent, name) => void createFolder(root, parent, name)}
+            onCreateFolder={createFolder}
+            onRenameFolder={renameFolder}
             onDeleteFolder={(root, path) => void deleteFolder(root, path)}
             onExportFolder={(root, path) => void handleExportFolder(root, path)}
             onRename={renameDoc}

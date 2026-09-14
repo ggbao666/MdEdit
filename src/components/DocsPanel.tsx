@@ -27,10 +27,13 @@ interface Props {
   roots: WorkspaceInfo[]
   folders: FolderMeta[]
   activeId: string
+  /** 新建文档后，指定要在列表中原地编辑名称的文档。 */
+  editRequestId: string | null
   onSelect: (id: string) => void
   /** 在指定目录新建；root 为空表示建一篇还没落盘的内存文档 */
   onCreate: (root: string | null, dir?: string) => void
-  onCreateFolder: (root: string, parent: string, name: string) => void
+  onCreateFolder: (root: string, parent: string, name: string) => Promise<FolderMeta | null>
+  onRenameFolder: (root: string, path: string, name: string) => Promise<FolderMeta | null>
   onDeleteFolder: (root: string, path: string) => void
   onExportFolder: (root: string, path: string) => void
   onRename: (id: string, title: string) => void
@@ -52,10 +55,9 @@ type DocContextMenu =
   | { kind: 'doc'; doc: DocRecord; x: number; y: number }
   | { kind: 'folder'; root: string; path: string; name: string; x: number; y: number }
 
-interface FolderDialog {
+interface FolderEdit {
   root: string
-  parent: string
-  parentName: string
+  path: string
   name: string
 }
 
@@ -99,9 +101,11 @@ export default function DocsPanel({
   roots,
   folders,
   activeId,
+  editRequestId,
   onSelect,
   onCreate,
   onCreateFolder,
+  onRenameFolder,
   onDeleteFolder,
   onExportFolder,
   onRename,
@@ -118,7 +122,7 @@ export default function DocsPanel({
   const [dragId, setDragId] = useState<string | null>(null)
   const [dropTarget, setDropTarget] = useState<DropTarget | null>(null)
   const [contextMenu, setContextMenu] = useState<DocContextMenu | null>(null)
-  const [folderDialog, setFolderDialog] = useState<FolderDialog | null>(null)
+  const [folderEdit, setFolderEdit] = useState<FolderEdit | null>(null)
   const [collapsed, setCollapsed] = useState<string[]>([])
   /**
    * 逻辑判断用 ref 而不是 state：dragstart 之后 React 还没提交 state，
@@ -133,6 +137,7 @@ export default function DocsPanel({
   const contextMenuRef = useRef<HTMLDivElement>(null)
   const folderInputRef = useRef<HTMLInputElement>(null)
   const deleteConfirmRef = useRef<HTMLButtonElement>(null)
+  const folderEditKey = folderEdit ? `${folderEdit.root}|${folderEdit.path}` : ''
 
   const visible = useMemo(() => {
     const q = query.trim().toLowerCase()
@@ -175,7 +180,7 @@ export default function DocsPanel({
   }, [folders, roots, visible])
 
   /** 搜索时顺序是过滤出来的子集，拖拽会把顺序写乱，直接禁用 */
-  const draggable = !query.trim() && !editingId
+  const draggable = !query.trim() && !editingId && !folderEdit
 
   useEffect(() => {
     if (!editingId) return
@@ -184,12 +189,36 @@ export default function DocsPanel({
   }, [editingId])
 
   useEffect(() => {
-    if (!folderDialog) return
-    requestAnimationFrame(() => {
+    if (!editRequestId) return
+    const doc = docs.find((item) => item.id === editRequestId)
+    if (!doc) return
+
+    // 新文档必须可见，才能在它所在的目录位置直接输入名称。
+    setQuery('')
+    setCollapsed((prev) => {
+      const reveal = new Set<string>([doc.root || 'mem'])
+      let folder = parentPath(doc.path)
+      while (doc.root && folder) {
+        reveal.add(`${doc.root}|${folder}`)
+        folder = parentPath(folder)
+      }
+      const next = prev.filter((key) => !reveal.has(key))
+      return next.length === prev.length ? prev : next
+    })
+    setDraft(doc.title)
+    setEditingId(doc.id)
+    // docs 与请求在 App 中一并更新；后续普通重命名不应重新触发本效果。
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editRequestId])
+
+  useEffect(() => {
+    if (!folderEditKey) return
+    const frame = requestAnimationFrame(() => {
       folderInputRef.current?.focus()
       folderInputRef.current?.select()
     })
-  }, [folderDialog])
+    return () => cancelAnimationFrame(frame)
+  }, [folderEditKey])
 
   useEffect(() => {
     if (!deleteDialog) return
@@ -397,9 +426,30 @@ export default function DocsPanel({
     setContextMenu({ kind: 'folder', root, path, name, ...menuPosition(event.clientX, event.clientY) })
   }
 
-  const askForFolder = (root: string, parent: string, parentName: string) => {
+  const revealFolderInTree = (root: string, path: string) => {
+    setQuery('')
+    setCollapsed((prev) => {
+      const reveal = new Set<string>([root])
+      let current = path
+      while (current) {
+        reveal.add(`${root}|${current}`)
+        current = parentPath(current)
+      }
+      return prev.filter((key) => !reveal.has(key))
+    })
+  }
+
+  const startFolderEdit = (root: string, path: string, name: string) => {
     setContextMenu(null)
-    setFolderDialog({ root, parent, parentName, name: '新建文件夹' })
+    revealFolderInTree(root, parentPath(path))
+    setFolderEdit({ root, path, name })
+  }
+
+  const askForFolder = async (root: string, parent: string) => {
+    setContextMenu(null)
+    revealFolderInTree(root, parent)
+    const folder = await onCreateFolder(root, parent, '新建文件夹')
+    if (folder) startFolderEdit(folder.root, folder.path, folder.name)
   }
 
   const openImportPicker = (root: string, dir: string, kind: 'files' | 'zip') => {
@@ -417,17 +467,23 @@ export default function DocsPanel({
     if (target && files.length > 0) onImportFiles(files, target.root, target.dir)
   }
 
-  const commitFolder = () => {
-    if (!folderDialog) return
-    const name = folderDialog.name.trim()
-    if (!name) return
-    onCreateFolder(folderDialog.root, folderDialog.parent, name)
-    setFolderDialog(null)
+  const commitFolderEdit = () => {
+    if (!folderEdit) return
+    const edit = folderEdit
+    const name = edit.name.trim()
+    setFolderEdit(null)
+    const current = folders.find((folder) => folder.root === edit.root && folder.path === edit.path)
+    if (name && name !== current?.name) void onRenameFolder(edit.root, edit.path, name)
+  }
+
+  const cancelFolderEdit = () => {
+    setFolderEdit(null)
   }
 
   const renderFolderNode = (root: string, node: FolderNode, depth: number) => {
     const key = `${root}|${node.path}`
     const isCollapsed = !query.trim() && collapsed.includes(key)
+    const isEditing = folderEditKey === key
     return (
       <div className="docfolder" key={key}>
         <div
@@ -437,7 +493,7 @@ export default function DocsPanel({
           tabIndex={0}
           aria-expanded={!isCollapsed}
           onClick={(event) => {
-            if ((event.target as HTMLElement).closest('button')) return
+            if ((event.target as HTMLElement).closest('button, input')) return
             toggleGroup(key)
           }}
           onKeyDown={(event) => {
@@ -457,9 +513,27 @@ export default function DocsPanel({
             <ChevronRight size={12} strokeWidth={2.2} />
           </button>
           <Folder size={14} strokeWidth={1.8} className="docgroup-icon" />
-          <span className="docgroup-name" title={node.path}>{node.name}</span>
+          {isEditing ? (
+            <input
+              ref={folderInputRef}
+              className="doclist-rename folder-rename"
+              value={folderEdit?.name ?? ''}
+              aria-label="重命名文件夹"
+              onChange={(event) => setFolderEdit((prev) => (prev ? { ...prev, name: event.target.value } : prev))}
+              onClick={(event) => event.stopPropagation()}
+              onDoubleClick={(event) => event.stopPropagation()}
+              onBlur={commitFolderEdit}
+              onKeyDown={(event) => {
+                event.stopPropagation()
+                if (event.key === 'Enter') commitFolderEdit()
+                else if (event.key === 'Escape') cancelFolderEdit()
+              }}
+            />
+          ) : (
+            <span className="docgroup-name" title={node.path}>{node.name}</span>
+          )}
           <span className="docgroup-count">{folderDocCount(node)}</span>
-          <div className="docgroup-actions" role="group" aria-label={`${node.name} 快捷操作`}>
+          {!isEditing && <div className="docgroup-actions" role="group" aria-label={`${node.name} 快捷操作`}>
             <button
               type="button"
               title={`在“${node.name}”中新建文档`}
@@ -477,12 +551,12 @@ export default function DocsPanel({
               aria-label={`在“${node.name}”中新建文件夹`}
               onClick={(event) => {
                 event.stopPropagation()
-                askForFolder(root, node.path, node.name)
+                void askForFolder(root, node.path)
               }}
             >
               <FolderPlus size={13} strokeWidth={2} />
             </button>
-          </div>
+          </div>}
         </div>
         {!isCollapsed && (
           <div className="docfolder-contents">
@@ -619,7 +693,7 @@ export default function DocsPanel({
                         aria-label={`在“${group.name}”中新建文件夹`}
                         onClick={(event) => {
                           event.stopPropagation()
-                          askForFolder(group.root, '', group.name)
+                          void askForFolder(group.root, '')
                         }}
                       >
                         <FolderPlus size={13} strokeWidth={2} />
@@ -696,7 +770,7 @@ export default function DocsPanel({
                 <button
                   type="button"
                   role="menuitem"
-                  onClick={() => askForFolder(contextMenu.root, contextMenu.path, contextMenu.name)}
+                  onClick={() => void askForFolder(contextMenu.root, contextMenu.path)}
                 >
                   <FolderPlus size={15} strokeWidth={2} />
                   新建文件夹
@@ -743,6 +817,20 @@ export default function DocsPanel({
                   <button
                     type="button"
                     role="menuitem"
+                    onClick={() => startFolderEdit(
+                      contextMenu.root,
+                      contextMenu.path,
+                      contextMenu.name,
+                    )}
+                  >
+                    <Pencil size={15} strokeWidth={2} />
+                    重命名文件夹
+                  </button>
+                )}
+                {contextMenu.path !== '' && (
+                  <button
+                    type="button"
+                    role="menuitem"
                     className="is-danger"
                     disabled={hasNestedFolder(contextMenu.root, contextMenu.path)}
                     title={
@@ -785,30 +873,6 @@ export default function DocsPanel({
                 )}
               </>
             )}
-          </div>,
-          document.body,
-        )}
-
-      {folderDialog &&
-        createPortal(
-          <div className="folder-dialog-backdrop" onMouseDown={() => setFolderDialog(null)}>
-            <div className="folder-dialog" onMouseDown={(event) => event.stopPropagation()}>
-              <div className="folder-dialog-title">新建文件夹</div>
-              <div className="folder-dialog-hint">将在「{folderDialog.parentName}」中创建</div>
-              <input
-                ref={folderInputRef}
-                value={folderDialog.name}
-                onChange={(event) => setFolderDialog((prev) => (prev ? { ...prev, name: event.target.value } : prev))}
-                onKeyDown={(event) => {
-                  if (event.key === 'Enter') commitFolder()
-                  else if (event.key === 'Escape') setFolderDialog(null)
-                }}
-              />
-              <div className="folder-dialog-actions">
-                <button type="button" className="btn" onClick={() => setFolderDialog(null)}>取消</button>
-                <button type="button" className="btn btn-primary" onClick={commitFolder}>创建</button>
-              </div>
-            </div>
           </div>,
           document.body,
         )}

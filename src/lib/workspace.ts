@@ -233,6 +233,16 @@ export async function createFolder(root: string, parent: string, name: string): 
   }
 }
 
+export async function renameFolder(root: string, from: string, name: string): Promise<FolderMeta | null> {
+  const api = ws()
+  if (!api) return null
+  try {
+    return await api.renameFolder(root, from, name)
+  } catch {
+    return null
+  }
+}
+
 export type RemoveFolderResult = 'removed' | 'has-subfolders' | 'has-other-files' | 'invalid' | 'failed'
 
 export async function removeFolder(root: string, path: string): Promise<RemoveFolderResult> {

@@ -1016,6 +1016,10 @@ textarea {
   font-weight: 500;
   outline: none;
 }
+.folder-rename {
+  height: 22px;
+  font-size: 12.5px;
+}
 
 /* 操作按钮常占位置（只是透明），避免 hover 时列表抖动 */
 .doclist-actions {

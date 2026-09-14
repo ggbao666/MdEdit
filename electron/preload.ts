@@ -74,6 +74,9 @@ const workspace = {
   createFolder: (root: string, parent: string, name: string): Promise<FolderMeta | null> =>
     ipcRenderer.invoke('ws:createFolder', root, parent, name),
 
+  renameFolder: (root: string, from: string, name: string): Promise<FolderMeta | null> =>
+    ipcRenderer.invoke('ws:renameFolder', root, from, name),
+
   removeFolder: (root: string, path: string): Promise<RemoveFolderResult> =>
     ipcRenderer.invoke('ws:removeFolder', root, path),
 

@@ -64,6 +64,7 @@ interface TiptoraWorkspaceApi {
   /** 新建文档，自动处理重名；返回实际创建的文件 */
   create: (root: string, title: string, dir?: string) => Promise<DocFileMeta | null>
   createFolder: (root: string, parent: string, name: string) => Promise<FolderMeta | null>
+  renameFolder: (root: string, from: string, name: string) => Promise<FolderMeta | null>
   removeFolder: (root: string, path: string) => Promise<RemoveFolderResult>
   rename: (root: string, from: string, to: string) => Promise<DocFileMeta | null>
   remove: (root: string, path: string) => Promise<boolean>

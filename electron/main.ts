@@ -549,6 +549,50 @@ ipcMain.handle('ws:createFolder', async (_event, root: string, parent: string, r
   }
 })
 
+ipcMain.handle('ws:renameFolder', async (_event, root: string, from: string, rawName: string) => {
+  if (!roots.includes(root)) return null
+  const safeFrom = safeRel(from)
+  if (!safeFrom) return null
+  const src = absFor(root, safeFrom)
+  if (!src) return null
+
+  const clean = rawName.trim().replace(/[\\/:*?"<>|]/g, '').replace(/^\.+$/, '') || basename(safeFrom)
+  const slash = safeFrom.lastIndexOf('/')
+  const parent = slash >= 0 ? safeFrom.slice(0, slash + 1) : ''
+  const base = `${parent}${clean}`
+  let rel = base
+  let index = 2
+
+  try {
+    const info = await stat(src)
+    if (!info.isDirectory()) return null
+    if (rel === safeFrom) return { root, path: safeFrom, name: basename(safeFrom) } satisfies FolderMeta
+    if (process.platform === 'win32' && rel.toLowerCase() === safeFrom.toLowerCase()) {
+      const dst = absFor(root, rel)
+      if (!dst) return null
+      await rename(src, dst)
+      activeRoot = root
+      return { root, path: rel, name: basename(rel) } satisfies FolderMeta
+    }
+
+    while (true) {
+      const dst = absFor(root, rel)
+      if (!dst) return null
+      try {
+        await stat(dst)
+        rel = `${base} ${index}`
+        index += 1
+      } catch {
+        await rename(src, dst)
+        activeRoot = root
+        return { root, path: rel, name: basename(rel) } satisfies FolderMeta
+      }
+    }
+  } catch {
+    return null
+  }
+})
+
 ipcMain.handle('ws:removeFolder', async (_event, root: string, rel: string) => {
   if (!roots.includes(root)) return 'invalid'
   const safe = safeRel(rel)
