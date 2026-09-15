@@ -83,9 +83,10 @@ $letterPen.LineJoin = [System.Drawing.Drawing2D.LineJoin]::Round
 $graphics.DrawPath($letterPen, $letterPath)
 $graphics.Dispose()
 
-$sizes = 16, 24, 32, 48, 64, 128, 256
-$pngImages = [System.Collections.Generic.List[byte[]]]::new()
-foreach ($size in $sizes) {
+$icoSizes = 16, 24, 32, 48, 64, 128, 256
+$allSizes = 16, 24, 32, 48, 64, 128, 256, 512, 1024
+$pngImages = @{}
+foreach ($size in $allSizes) {
   $resized = [System.Drawing.Bitmap]::new($size, $size, [System.Drawing.Imaging.PixelFormat]::Format32bppArgb)
   $resizedGraphics = [System.Drawing.Graphics]::FromImage($resized)
   $resizedGraphics.CompositingQuality = [System.Drawing.Drawing2D.CompositingQuality]::HighQuality
@@ -94,7 +95,7 @@ foreach ($size in $sizes) {
   $resizedGraphics.DrawImage($bitmap, 0, 0, $size, $size)
   $imageStream = [System.IO.MemoryStream]::new()
   $resized.Save($imageStream, [System.Drawing.Imaging.ImageFormat]::Png)
-  $pngImages.Add($imageStream.ToArray())
+  $pngImages[$size] = $imageStream.ToArray()
   $imageStream.Dispose()
   $resizedGraphics.Dispose()
   $resized.Dispose()
@@ -111,26 +112,66 @@ $iconStream = [System.IO.MemoryStream]::new()
 $writer = [System.IO.BinaryWriter]::new($iconStream)
 $writer.Write([uint16]0)
 $writer.Write([uint16]1)
-$writer.Write([uint16]$sizes.Count)
-$dataOffset = 6 + 16 * $sizes.Count
-for ($index = 0; $index -lt $sizes.Count; $index++) {
-  $size = $sizes[$index]
+$writer.Write([uint16]$icoSizes.Count)
+$dataOffset = 6 + 16 * $icoSizes.Count
+foreach ($size in $icoSizes) {
   $writer.Write([byte]($(if ($size -eq 256) { 0 } else { $size })))
   $writer.Write([byte]($(if ($size -eq 256) { 0 } else { $size })))
   $writer.Write([byte]0)
   $writer.Write([byte]0)
   $writer.Write([uint16]1)
   $writer.Write([uint16]32)
-  $writer.Write([uint32]$pngImages[$index].Length)
+  $writer.Write([uint32]$pngImages[$size].Length)
   $writer.Write([uint32]$dataOffset)
-  $dataOffset += $pngImages[$index].Length
+  $dataOffset += $pngImages[$size].Length
 }
-foreach ($png in $pngImages) {
-  $writer.Write($png)
+foreach ($size in $icoSizes) {
+  $writer.Write([byte[]]$pngImages[$size])
 }
 
-$outputName = if ($Variant -eq 'offset') { 'icon-offset.ico' } else { 'icon.ico' }
-$outputPath = Join-Path $PSScriptRoot "..\build\$outputName"
-[System.IO.File]::WriteAllBytes($outputPath, $iconStream.ToArray())
+$outputBaseName = if ($Variant -eq 'offset') { 'icon-offset' } else { 'icon' }
+$icoOutputPath = Join-Path $PSScriptRoot "..\build\$outputBaseName.ico"
+[System.IO.File]::WriteAllBytes($icoOutputPath, $iconStream.ToArray())
 $writer.Dispose()
 $iconStream.Dispose()
+
+function Write-BigEndianUInt32([System.IO.BinaryWriter]$binaryWriter, [uint32]$value) {
+  $binaryWriter.Write([byte](($value -shr 24) -band 0xff))
+  $binaryWriter.Write([byte](($value -shr 16) -band 0xff))
+  $binaryWriter.Write([byte](($value -shr 8) -band 0xff))
+  $binaryWriter.Write([byte]($value -band 0xff))
+}
+
+$icnsEntries = [ordered]@{
+  'icp4' = 16
+  'icp5' = 32
+  'icp6' = 64
+  'ic07' = 128
+  'ic08' = 256
+  'ic09' = 512
+  'ic10' = 1024
+  'ic11' = 32
+  'ic12' = 64
+  'ic13' = 256
+  'ic14' = 512
+}
+$icnsLength = 8
+foreach ($entry in $icnsEntries.GetEnumerator()) {
+  $icnsLength += 8 + $pngImages[$entry.Value].Length
+}
+
+$icnsStream = [System.IO.MemoryStream]::new()
+$icnsWriter = [System.IO.BinaryWriter]::new($icnsStream)
+$icnsWriter.Write([System.Text.Encoding]::ASCII.GetBytes('icns'))
+Write-BigEndianUInt32 $icnsWriter $icnsLength
+foreach ($entry in $icnsEntries.GetEnumerator()) {
+  $png = [byte[]]$pngImages[$entry.Value]
+  $icnsWriter.Write([System.Text.Encoding]::ASCII.GetBytes($entry.Key))
+  Write-BigEndianUInt32 $icnsWriter (8 + $png.Length)
+  $icnsWriter.Write($png)
+}
+
+$icnsOutputPath = Join-Path $PSScriptRoot "..\build\$outputBaseName.icns"
+[System.IO.File]::WriteAllBytes($icnsOutputPath, $icnsStream.ToArray())
+$icnsWriter.Dispose()
+$icnsStream.Dispose()

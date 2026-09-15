@@ -88,6 +88,13 @@ Electron 编译与打包
     输出目录：release/
 
 
+12. npm run electron:mac
+
+    在 macOS 上完整构建项目并生成 DMG 和 ZIP 发布包。
+    默认构建当前机器架构；可追加 -- --x64、-- --arm64 或 -- --universal。
+    输出目录：release/
+
+
 常用命令
 --------
 

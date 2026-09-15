@@ -129,12 +129,13 @@ MdEdit 提供两种图片存储方式：
 | `npm run electron:installer` | 构建 Windows NSIS 安装程序 |
 | `npm run electron:portable` | 构建 Windows 便携版 |
 | `npm run electron:dist` | 构建配置中的全部 Windows 发布目标 |
+| `npm run electron:mac` | 在 macOS 上构建 DMG 与 ZIP 发布包 |
 
 ## 项目结构
 
 ```text
 .
-├─ build/                 # Windows 应用图标
+├─ build/                 # Windows 与 macOS 应用图标
 ├─ electron/              # Electron 主进程、IPC 与预加载脚本
 ├─ scripts/               # 开发、构建和图标生成脚本
 ├─ src/
