@@ -152,6 +152,10 @@ export interface Prefs {
    * 支持 {name} 占位符（文档名），默认 `{name}.assets`。
    */
   assetDir: string
+  /** 资源目录使用工作区相对模板，或用户指定的本机绝对目录。 */
+  assetDirMode: 'relative' | 'custom'
+  /** 用户通过系统目录选择框指定的本机资源目录。 */
+  customAssetDir: string
 }
 
 const DEFAULT_PREFS: Prefs = {
@@ -164,6 +168,8 @@ const DEFAULT_PREFS: Prefs = {
   autoSave: true,
   autoSaveDelay: 700,
   assetDir: '{name}.assets',
+  assetDirMode: 'relative',
+  customAssetDir: '',
 }
 
 export function loadPrefs(): Prefs {
@@ -194,6 +200,8 @@ export function loadPrefs(): Prefs {
         ? Math.min(60_000, Math.max(100, Math.round(parsed.autoSaveDelay)))
         : DEFAULT_PREFS.autoSaveDelay
     const assetDir = typeof parsed.assetDir === 'string' && parsed.assetDir.trim() ? parsed.assetDir : DEFAULT_PREFS.assetDir
+    const customAssetDir = typeof parsed.customAssetDir === 'string' ? parsed.customAssetDir.trim() : ''
+    const assetDirMode = parsed.assetDirMode === 'custom' && customAssetDir ? 'custom' : 'relative'
     return {
       sidebar: applyHiddenPanelDefaults
         ? false
@@ -208,6 +216,8 @@ export function loadPrefs(): Prefs {
       autoSave,
       autoSaveDelay,
       assetDir,
+      assetDirMode,
+      customAssetDir,
     }
   } catch {
     return DEFAULT_PREFS

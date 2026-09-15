@@ -88,6 +88,11 @@ const workspace = {
   writeAsset: (root: string, path: string, bytes: Uint8Array): Promise<string | null> =>
     ipcRenderer.invoke('ws:writeAsset', root, path, bytes),
 
+  pickAssetDirectory: (): Promise<string | null> => ipcRenderer.invoke('ws:pickAssetDirectory'),
+
+  writeExternalAsset: (directory: string, fileName: string, bytes: Uint8Array): Promise<string | null> =>
+    ipcRenderer.invoke('ws:writeExternalAsset', directory, fileName, bytes),
+
   readAsset: (root: string, path: string): Promise<Uint8Array | null> =>
     ipcRenderer.invoke('ws:readAsset', root, path),
 

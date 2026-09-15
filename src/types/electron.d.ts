@@ -70,6 +70,10 @@ interface TiptoraWorkspaceApi {
   remove: (root: string, path: string) => Promise<boolean>
   /** 写入二进制资源（图片），自动建目录 + 重名避让；返回最终相对路径 */
   writeAsset: (root: string, path: string, bytes: Uint8Array) => Promise<string | null>
+  /** 选择并授权一个工作区外的图片资源目录。 */
+  pickAssetDirectory: () => Promise<string | null>
+  /** 向已授权的指定目录写入图片；返回可写入 Markdown 的 file URL。 */
+  writeExternalAsset: (directory: string, fileName: string, bytes: Uint8Array) => Promise<string | null>
   readAsset: (root: string, path: string) => Promise<Uint8Array | null>
   /** 在系统文件管理器中选中文档 */
   reveal: (root: string, path: string) => void

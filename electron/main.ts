@@ -2,6 +2,7 @@ import { app, BrowserWindow, dialog, ipcMain, Menu, protocol, shell } from 'elec
 import { readFileSync } from 'node:fs'
 import { mkdir, readFile, readdir, rename, rm, rmdir, stat, writeFile } from 'node:fs/promises'
 import { basename, dirname, extname, join, resolve, sep } from 'node:path'
+import { fileURLToPath, pathToFileURL } from 'node:url'
 
 const isDev = !app.isPackaged
 const packageInfo = JSON.parse(readFileSync(join(app.getAppPath(), 'package.json'), 'utf8')) as {
@@ -69,6 +70,8 @@ function createWindow(): void {
 
 /** 当前挂载的目录（顺序即侧栏分组顺序） */
 let roots: string[] = []
+/** 用户通过系统对话框明确授权的工作区外资源目录。 */
+let assetDirectories: string[] = []
 /** 最近使用过的目录，用于「在文件管理器中显示」 */
 let activeRoot: string | null = null
 /** 上次会话挂载过的目录，仅用于启动时的「打开上次」入口 */
@@ -79,8 +82,11 @@ const configFile = (): string => join(app.getPath('userData'), 'workspace.json')
 async function restoreWorkspace(): Promise<void> {
   try {
     const raw = await readFile(configFile(), 'utf8')
-    const parsed = JSON.parse(raw) as { roots?: unknown }
+    const parsed = JSON.parse(raw) as { roots?: unknown; assetDirectories?: unknown }
     const list = Array.isArray(parsed.roots) ? parsed.roots.filter((x): x is string => typeof x === 'string') : []
+    const assetList = Array.isArray(parsed.assetDirectories)
+      ? parsed.assetDirectories.filter((x): x is string => typeof x === 'string')
+      : []
     // 目录可能已被移动或删除，逐个校验
     const alive: string[] = []
     for (const dir of list) {
@@ -92,6 +98,17 @@ async function restoreWorkspace(): Promise<void> {
       }
     }
     lastRoots = alive
+    const aliveAssets: string[] = []
+    for (const dir of assetList) {
+      try {
+        const full = resolve(dir)
+        const info = await stat(full)
+        if (info.isDirectory()) aliveAssets.push(full)
+      } catch {
+        /* 失效的资源目录直接丢掉 */
+      }
+    }
+    assetDirectories = aliveAssets
   } catch {
     /* 第一次启动，没有记录 */
   }
@@ -101,7 +118,7 @@ async function restoreWorkspace(): Promise<void> {
 async function persistWorkspace(): Promise<void> {
   try {
     await mkdir(app.getPath('userData'), { recursive: true })
-    await writeFile(configFile(), JSON.stringify({ roots }), 'utf8')
+    await writeFile(configFile(), JSON.stringify({ roots, assetDirectories }), 'utf8')
   } catch {
     /* 忽略 */
   }
@@ -145,6 +162,39 @@ async function pickWorkspace(win?: BrowserWindow | null): Promise<WorkspaceState
     : await dialog.showOpenDialog(options)
   if (result.canceled || result.filePaths.length === 0) return null
   return await attach(result.filePaths[0])
+}
+
+async function pickAssetDirectory(win?: BrowserWindow | null): Promise<string | null> {
+  const options: Electron.OpenDialogOptions = {
+    title: '选择图片资源目录',
+    properties: ['openDirectory', 'createDirectory'],
+  }
+  const result = win
+    ? await dialog.showOpenDialog(win, options)
+    : await dialog.showOpenDialog(options)
+  if (result.canceled || result.filePaths.length === 0) return null
+  const directory = resolve(result.filePaths[0])
+  try {
+    const info = await stat(directory)
+    if (!info.isDirectory()) return null
+  } catch {
+    return null
+  }
+  const key = process.platform === 'win32' ? directory.toLowerCase() : directory
+  if (!assetDirectories.some((item) => (process.platform === 'win32' ? item.toLowerCase() : item) === key)) {
+    assetDirectories = [...assetDirectories, directory]
+    await persistWorkspace()
+  }
+  return directory
+}
+
+function allowedAssetPath(file: string): boolean {
+  const full = resolve(file)
+  const candidate = process.platform === 'win32' ? full.toLowerCase() : full
+  return assetDirectories.some((directory) => {
+    const root = process.platform === 'win32' ? directory.toLowerCase() : directory
+    return candidate === root || candidate.startsWith(root + sep)
+  })
 }
 
 /** 只接受相对路径，且不允许 .. 逃逸出工作区 */
@@ -687,6 +737,40 @@ ipcMain.handle('ws:writeAsset', async (_event, root: string, rel: string, bytes:
   }
 })
 
+ipcMain.handle('ws:pickAssetDirectory', async () => {
+  const win = BrowserWindow.getFocusedWindow() ?? mainWindow
+  return await pickAssetDirectory(win)
+})
+
+ipcMain.handle(
+  'ws:writeExternalAsset',
+  async (_event, directory: string, rawName: string, bytes: Uint8Array): Promise<string | null> => {
+    if (typeof directory !== 'string' || typeof rawName !== 'string' || !allowedAssetPath(directory)) return null
+    const targetDir = resolve(directory)
+    const extension = extname(rawName).toLowerCase()
+    const stem = basename(rawName, extension).replace(/[\\/:*?"<>|]/g, '').trim() || 'image'
+    const safeExtension = /^\.[a-z0-9]{2,5}$/i.test(extension) ? extension : '.png'
+    let fileName = `${stem}${safeExtension}`
+    let index = 2
+    while (true) {
+      const candidate = resolve(targetDir, fileName)
+      if (!allowedAssetPath(candidate)) return null
+      try {
+        await stat(candidate)
+        fileName = `${stem} ${index}${safeExtension}`
+        index += 1
+      } catch {
+        try {
+          await writeFile(candidate, Buffer.from(bytes))
+          return pathToFileURL(candidate).href
+        } catch {
+          return null
+        }
+      }
+    }
+  },
+)
+
 ipcMain.handle('ws:readAsset', async (_event, root: string, rel: string) => {
   const full = absFor(root, rel)
   if (!full) return null
@@ -811,9 +895,20 @@ if (!gotLock) {
     protocol.handle('tiptora', async (request) => {
       try {
         const url = new URL(request.url)
-        const root = url.searchParams.get('r') ?? ''
-        const rel = url.searchParams.get('p') ?? ''
-        const full = absFor(root, rel)
+        let full: string | null = null
+        if (url.hostname === 'external') {
+          const fileUrl = url.searchParams.get('u') ?? ''
+          try {
+            const candidate = fileURLToPath(fileUrl)
+            full = allowedAssetPath(candidate) ? candidate : null
+          } catch {
+            full = null
+          }
+        } else {
+          const root = url.searchParams.get('r') ?? ''
+          const rel = url.searchParams.get('p') ?? ''
+          full = absFor(root, rel)
+        }
         if (!full) return new Response('Not found', { status: 404 })
         const data = await readFile(full)
         const type = MIME[extname(full).toLowerCase()] ?? 'application/octet-stream'

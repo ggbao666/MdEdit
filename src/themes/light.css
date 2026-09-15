@@ -1,34 +1,151 @@
 :root {
-  --theme-name: "清新亮色";
+  --theme-name: "柔雾亮色";
   --theme-appearance: light;
-  --theme-description: "明亮、柔和，保留青绿色点缀。";
+  --theme-description: "柔和雾白背景、清晰石墨文字与克制灰蓝点缀。";
   --theme-order: 10;
-  --bg: #f5f8f8;
-  --bg-grad: radial-gradient(1200px 600px at 50% -10%, #e8f6f4 0%, #f5f8f8 55%);
-  --surface: #ffffff;
-  --surface-2: #eef3f3;
-  --surface-3: #e4ecec;
-  --border: #e3eaea;
-  --border-strong: #d3dedd;
-  --text: #16232b;
-  --text-2: #5d7078;
-  --text-3: #98a9ad;
-  --accent: #0f9d8f;
-  --accent-hover: #0b8579;
-  --accent-soft: rgba(15, 157, 143, 0.1);
-  --accent-ring: rgba(15, 157, 143, 0.28);
-  --danger: #dc2626;
-  --danger-hover: #b91c1c;
-  --code-bg: #f2f6f6;
-  --mark: #d9f5b8;
-  --shadow-sm: 0 1px 2px rgba(16, 32, 40, 0.05);
-  --shadow-md: 0 6px 20px rgba(16, 40, 44, 0.08);
-  --shadow-lg: 0 18px 48px rgba(16, 40, 44, 0.14);
-  --tok-key: #b4299a;
-  --tok-str: #0a7c5a;
-  --tok-num: #c2410c;
-  --tok-com: #93a3a6;
-  --tok-func: #2563eb;
-  --tok-type: #7c3aed;
-  --tok-attr: #0369a1;
+
+  /* 柔和的灰白层级，长时间阅读不刺眼。 */
+  --bg: #eef2f5;
+  --bg-grad: radial-gradient(circle at 50% -18%, #fbfcfd 0%, #f3f6f8 42%, #edf1f4 100%);
+  --surface: #fbfcfd;
+  --surface-2: #f3f6f8;
+  --surface-3: #e8edf2;
+  --border: #dde4ea;
+  --border-strong: #cad4dd;
+
+  /* 石墨正文配灰蓝辅助文字，保持清晰但不生硬。 */
+  --text: #27323d;
+  --text-2: #5d6b78;
+  --text-3: #8b97a2;
+  --accent: #426b8c;
+  --accent-hover: #355a78;
+  --accent-soft: rgba(66, 107, 140, 0.11);
+  --accent-ring: rgba(66, 107, 140, 0.24);
+
+  --danger: #bc5358;
+  --danger-hover: #a44348;
+  --code-bg: #edf2f5;
+  --mark: #f2e6b6;
+
+  --shadow-sm: 0 1px 2px rgba(35, 50, 65, 0.06);
+  --shadow-md: 0 8px 24px rgba(35, 50, 65, 0.09);
+  --shadow-lg: 0 20px 52px rgba(35, 50, 65, 0.14);
+
+  --tok-key: #875b83;
+  --tok-str: #47765f;
+  --tok-num: #a3613f;
+  --tok-com: #89949d;
+  --tok-func: #416f9b;
+  --tok-type: #6c6594;
+  --tok-attr: #3f7184;
+}
+
+/* 应用骨架：内容区清爽，导航区用轻微灰阶分层。 */
+.topbar {
+  border-bottom-color: var(--border-strong);
+  background: color-mix(in srgb, var(--surface) 92%, transparent);
+  box-shadow: 0 1px 0 rgba(39, 50, 61, 0.025);
+}
+
+.toolbar {
+  background: color-mix(in srgb, var(--surface) 84%, transparent);
+}
+
+.sidebar,
+.outline-sidebar {
+  background: color-mix(in srgb, var(--surface-2) 86%, var(--bg));
+}
+
+.scroll-area {
+  background: var(--surface);
+}
+
+.statusbar {
+  background: color-mix(in srgb, var(--surface-2) 88%, var(--surface));
+}
+
+/* 顶部文档标题保持安静，聚焦时再强调品牌色。 */
+.current-doc {
+  border-color: transparent;
+  background: var(--surface-2);
+  box-shadow: inset 0 0 0 1px rgba(202, 212, 221, 0.7);
+}
+
+.current-doc:hover {
+  background: var(--surface-3);
+}
+
+.current-doc:focus-within {
+  background: var(--surface);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+.doc-title {
+  color: var(--text-2);
+}
+
+.current-doc:focus-within .doc-title {
+  color: var(--accent);
+}
+
+/* 控件状态用留白和细微阴影建立层级。 */
+.sidebar-tab.is-active {
+  background: var(--surface);
+  box-shadow: var(--shadow-sm);
+}
+
+.doclist-search input,
+.link-input {
+  background: var(--surface);
+}
+
+.doclist-item.is-active {
+  background: var(--accent-soft);
+}
+
+.doclist-item.is-active .doclist-icon,
+.doclist-item.is-active .doclist-title {
+  color: var(--accent);
+}
+
+.btn-primary,
+.launcher-sub.is-primary {
+  box-shadow: 0 4px 12px rgba(66, 107, 140, 0.2);
+}
+
+/* 阅读区减少装饰，只保留足够的内容提示。 */
+.page:not(.is-source) .editor-shell {
+  background: transparent;
+}
+
+.tiptap h1::before,
+.tiptap h2::before,
+.tiptap h3::before {
+  opacity: 0.58;
+}
+
+.tiptap blockquote {
+  padding: 0.55em 1em;
+  background: color-mix(in srgb, var(--accent-soft) 66%, transparent);
+}
+
+/* 浮层和启动页统一为轻盈的白色卡片。 */
+.block-menu,
+.link-pop,
+.slash-menu,
+.sheet,
+.about-card,
+.launcher-card,
+.bubble,
+.doc-context-menu {
+  border-color: var(--border-strong);
+}
+
+.overlay {
+  background: rgba(45, 58, 70, 0.24);
+}
+
+.launcher-card,
+.welcome-card {
+  box-shadow: 0 24px 64px rgba(35, 50, 65, 0.13);
 }

@@ -1,8 +1,9 @@
-import { FolderOpen, Image as ImageIcon, Settings as SettingsIcon, X } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
+import { Check, ChevronDown, FolderOpen, Image as ImageIcon, Settings as SettingsIcon, X } from 'lucide-react'
 
 import { ASSET_DIR_PRESETS, DEFAULT_ASSET_DIR, resolveAssetDir, safeSegment } from '../lib/assets'
 import { THEME_OPTIONS, type Theme } from '../config/themes'
-import type { WorkspaceInfo } from '../lib/workspace'
+import { pickAssetDirectory, type WorkspaceInfo } from '../lib/workspace'
 import type { Prefs } from '../lib/storage'
 
 const SAMPLE_DOC = '示例文档.md'
@@ -20,6 +21,144 @@ interface SettingsProps {
   onClose: () => void
 }
 
+function ThemePicker({ theme, onChange }: { theme: Theme; onChange: (theme: Theme) => void }) {
+  const [open, setOpen] = useState(false)
+  const rootRef = useRef<HTMLDivElement>(null)
+  const triggerRef = useRef<HTMLButtonElement>(null)
+  const menuRef = useRef<HTMLDivElement>(null)
+  const activeTheme = THEME_OPTIONS.find((option) => option.id === theme) ?? THEME_OPTIONS[0]
+
+  useEffect(() => {
+    if (!open) return
+    const handlePointerDown = (event: MouseEvent) => {
+      if (!rootRef.current?.contains(event.target as Node)) setOpen(false)
+    }
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') return
+      setOpen(false)
+      triggerRef.current?.focus()
+    }
+    document.addEventListener('mousedown', handlePointerDown)
+    document.addEventListener('keydown', handleEscape)
+    return () => {
+      document.removeEventListener('mousedown', handlePointerDown)
+      document.removeEventListener('keydown', handleEscape)
+    }
+  }, [open])
+
+  const focusOption = (position: 'active' | 'first' | 'last' = 'active') => {
+    requestAnimationFrame(() => {
+      const items = Array.from(menuRef.current?.querySelectorAll<HTMLButtonElement>('[role="option"]') ?? [])
+      const activeIndex = items.findIndex((item) => item.dataset.themeId === theme)
+      const index = position === 'first' ? 0 : position === 'last' ? items.length - 1 : Math.max(0, activeIndex)
+      items[index]?.focus()
+    })
+  }
+
+  const openMenu = (position: 'active' | 'first' | 'last' = 'active') => {
+    setOpen(true)
+    focusOption(position)
+  }
+
+  const handleMenuKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
+    const items = Array.from(menuRef.current?.querySelectorAll<HTMLButtonElement>('[role="option"]') ?? [])
+    const index = items.indexOf(document.activeElement as HTMLButtonElement)
+    if (event.key === 'ArrowDown') {
+      event.preventDefault()
+      items[Math.min(items.length - 1, index + 1)]?.focus()
+    } else if (event.key === 'ArrowUp') {
+      event.preventDefault()
+      items[Math.max(0, index - 1)]?.focus()
+    } else if (event.key === 'Home') {
+      event.preventDefault()
+      items[0]?.focus()
+    } else if (event.key === 'End') {
+      event.preventDefault()
+      items.at(-1)?.focus()
+    }
+  }
+
+  return (
+    <div className="theme-select-wrap" ref={rootRef}>
+      <button
+        ref={triggerRef}
+        id="theme-select"
+        type="button"
+        className="theme-select-control"
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        onClick={() => setOpen((value) => !value)}
+        onKeyDown={(event) => {
+          if (event.key === 'ArrowDown') {
+            event.preventDefault()
+            openMenu(open ? 'first' : 'active')
+          } else if (event.key === 'ArrowUp') {
+            event.preventDefault()
+            openMenu(open ? 'last' : 'active')
+          }
+        }}
+      >
+        <span
+          className="theme-swatch"
+          style={{
+            background: activeTheme.preview.bg,
+            borderColor: activeTheme.preview.border,
+          }}
+          aria-hidden="true"
+        >
+          <i style={{ background: activeTheme.preview.surface }} />
+          <b style={{ background: activeTheme.preview.accent }} />
+        </span>
+        <span className="theme-select-name">{activeTheme.name}</span>
+        <ChevronDown className="theme-select-chevron" size={16} strokeWidth={2} aria-hidden="true" />
+      </button>
+
+      {open && (
+        <div
+          ref={menuRef}
+          className="theme-select-menu"
+          role="listbox"
+          aria-label="界面主题"
+          onKeyDown={handleMenuKeyDown}
+        >
+          {(['light', 'dark'] as const).map((appearance) => (
+            <div className="theme-select-group" role="group" aria-label={appearance === 'light' ? '亮色主题' : '深色主题'} key={appearance}>
+              <div className="theme-select-group-label">{appearance === 'light' ? '亮色主题' : '深色主题'}</div>
+              {THEME_OPTIONS.filter((option) => option.appearance === appearance).map((option) => (
+                <button
+                  key={option.id}
+                  type="button"
+                  role="option"
+                  aria-selected={theme === option.id}
+                  data-theme-id={option.id}
+                  className={'theme-select-option' + (theme === option.id ? ' is-active' : '')}
+                  onClick={() => {
+                    onChange(option.id)
+                    setOpen(false)
+                    triggerRef.current?.focus()
+                  }}
+                >
+                  <span
+                    className="theme-option-color"
+                    style={{ background: option.preview.accent }}
+                    aria-hidden="true"
+                  />
+                  <span>{option.name}</span>
+                  {theme === option.id && <Check size={14} strokeWidth={2.2} aria-hidden="true" />}
+                </button>
+              ))}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {activeTheme.description && (
+        <span className="theme-select-description">{activeTheme.description}</span>
+      )}
+    </div>
+  )
+}
+
 export default function Settings({
   prefs,
   onChange,
@@ -29,7 +168,9 @@ export default function Settings({
   onDetachRoot,
   onClose,
 }: SettingsProps) {
-  const dirPreview = resolveAssetDir(prefs.assetDir, SAMPLE_DOC.replace(/\.md$/, ''))
+  const dirPreview = prefs.assetDirMode === 'custom'
+    ? prefs.customAssetDir || '尚未指定目录'
+    : resolveAssetDir(prefs.assetDir, SAMPLE_DOC.replace(/\.md$/, ''))
 
   return (
     <div className="overlay" onClick={onClose}>
@@ -49,30 +190,11 @@ export default function Settings({
           {/* ---------------- 外观 ---------------- */}
           <div className="set-group">
             <div className="set-group-title">外观</div>
-            <div className="theme-options">
-              {THEME_OPTIONS.map((option) => (
-                <button
-                  key={option.id}
-                  type="button"
-                  className={'theme-option' + (theme === option.id ? ' is-active' : '')}
-                  onClick={() => onThemeChange(option.id)}
-                >
-                  <span
-                    className="theme-swatch"
-                    style={{
-                      background: option.preview.bg,
-                      borderColor: option.preview.border,
-                    }}
-                  >
-                    <i style={{ background: option.preview.surface }} />
-                    <b style={{ background: option.preview.accent }} />
-                  </span>
-                  <span className="theme-option-copy">
-                    <strong>{option.name}</strong>
-                    <small>{option.description}</small>
-                  </span>
-                </button>
-              ))}
+            <div className="set-row theme-select-row">
+              <label className="set-label" htmlFor="theme-select">
+                界面主题
+              </label>
+              <ThemePicker theme={theme} onChange={onThemeChange} />
             </div>
 
             <div className="set-row">
@@ -222,10 +344,15 @@ export default function Settings({
                   <span className="set-label">资源目录</span>
                   <input
                     className="set-input"
-                    value={prefs.assetDir}
+                    value={prefs.assetDirMode === 'custom' ? prefs.customAssetDir : prefs.assetDir}
                     spellCheck={false}
                     placeholder={DEFAULT_ASSET_DIR}
-                    onChange={(e) => onChange({ assetDir: safeSegment(e.target.value, DEFAULT_ASSET_DIR) })}
+                    readOnly={prefs.assetDirMode === 'custom'}
+                    title={prefs.assetDirMode === 'custom' ? prefs.customAssetDir : undefined}
+                    onChange={(e) => onChange({
+                      assetDirMode: 'relative',
+                      assetDir: safeSegment(e.target.value, DEFAULT_ASSET_DIR),
+                    })}
                   />
                 </div>
 
@@ -234,24 +361,43 @@ export default function Settings({
                     <button
                       key={preset.value}
                       type="button"
-                      className={'chip' + (prefs.assetDir === preset.value ? ' is-active' : '')}
+                      className={
+                        'chip' +
+                        (prefs.assetDirMode === 'relative' && prefs.assetDir === preset.value ? ' is-active' : '')
+                      }
                       title={preset.hint}
-                      onClick={() => onChange({ assetDir: preset.value })}
+                      onClick={() => onChange({ assetDirMode: 'relative', assetDir: preset.value })}
                     >
                       <ImageIcon size={13} strokeWidth={2} />
                       {preset.value}
                     </button>
                   ))}
+                  <button
+                    type="button"
+                    className={'chip' + (prefs.assetDirMode === 'custom' ? ' is-active' : '')}
+                    title="选择工作区外的本机图片目录"
+                    onClick={async () => {
+                      const directory = await pickAssetDirectory()
+                      if (directory) onChange({ assetDirMode: 'custom', customAssetDir: directory })
+                    }}
+                  >
+                    <FolderOpen size={13} strokeWidth={2} />
+                    指定目录…
+                  </button>
                 </div>
 
                 <div className="set-preview">
                   <code>
                     {SAMPLE_DOC}
                     <br />
-                    {dirPreview}/{SAMPLE_IMG}
+                    {dirPreview}{prefs.assetDirMode === 'custom' ? '\\' : '/'}{SAMPLE_IMG}
                   </code>
                   <span className="set-hint">
-                    Markdown 引用：<code>![{''}]({dirPreview}/{SAMPLE_IMG})</code>
+                    {prefs.assetDirMode === 'custom' ? (
+                      <>插入图片时会在 Markdown 中保存对应的本地文件地址。</>
+                    ) : (
+                      <>Markdown 引用：<code>![{''}]({dirPreview}/{SAMPLE_IMG})</code></>
+                    )}
                   </span>
                 </div>
               </>

@@ -1,0 +1,130 @@
+:root {
+  --theme-name: "暮灰";
+  --theme-appearance: dark;
+  --theme-description: "比沉静灰更暗的炭灰配色，不使用纯黑，层次柔和清楚。";
+  --theme-order: 25;
+
+  --bg: #252a2d;
+  --bg-grad: linear-gradient(145deg, #2d3336 0%, #252a2d 62%, #22272a 100%);
+  --surface: #30363a;
+  --surface-2: #383f43;
+  --surface-3: #444c51;
+  --border: #41494e;
+  --border-strong: #535e64;
+
+  --text: #e4e8ea;
+  --text-2: #adb7bc;
+  --text-3: #78858c;
+  --accent: #8aa6b2;
+  --accent-hover: #a1bac4;
+  --accent-soft: rgba(138, 166, 178, 0.15);
+  --accent-ring: rgba(138, 166, 178, 0.28);
+
+  --danger: #dc7b7e;
+  --danger-hover: #e89194;
+  --code-bg: #292f32;
+  --mark: rgba(206, 181, 104, 0.25);
+
+  --shadow-sm: 0 1px 2px rgba(8, 12, 14, 0.24);
+  --shadow-md: 0 8px 26px rgba(8, 12, 14, 0.3);
+  --shadow-lg: 0 22px 56px rgba(8, 12, 14, 0.42);
+
+  --tok-key: #d2a7c3;
+  --tok-str: #a7c6af;
+  --tok-num: #d1ae88;
+  --tok-com: #718087;
+  --tok-func: #9bbbd0;
+  --tok-type: #b6afd2;
+  --tok-attr: #91b3bd;
+}
+
+.topbar {
+  border-bottom-color: var(--border-strong);
+  background: color-mix(in srgb, var(--surface) 90%, transparent);
+}
+
+.toolbar {
+  background: color-mix(in srgb, var(--surface) 80%, transparent);
+}
+
+.sidebar,
+.outline-sidebar {
+  background: color-mix(in srgb, var(--bg) 72%, var(--surface-2));
+}
+
+.scroll-area {
+  background: var(--surface);
+}
+
+.statusbar {
+  background: color-mix(in srgb, var(--bg) 65%, var(--surface-2));
+}
+
+.current-doc {
+  border-color: var(--border);
+  background: var(--surface-2);
+  box-shadow: none;
+}
+
+.current-doc:hover {
+  background: var(--surface-3);
+}
+
+.current-doc:focus-within {
+  border-color: var(--accent);
+  background: var(--surface);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+.doc-title {
+  color: var(--text-2);
+}
+
+.sidebar-tab.is-active {
+  background: var(--surface-2);
+  box-shadow: var(--shadow-sm);
+}
+
+.doclist-search input,
+.link-input {
+  background: var(--surface);
+}
+
+.doclist-item.is-active {
+  background: var(--accent-soft);
+}
+
+.doclist-item.is-active .doclist-icon,
+.doclist-item.is-active .doclist-title {
+  color: var(--text);
+}
+
+.page:not(.is-source) .editor-shell {
+  background: transparent;
+}
+
+.tiptap h1::before,
+.tiptap h2::before,
+.tiptap h3::before {
+  opacity: 0.7;
+}
+
+.tiptap blockquote {
+  padding: 0.55em 1em;
+  background: var(--accent-soft);
+}
+
+.block-menu,
+.link-pop,
+.slash-menu,
+.sheet,
+.about-card,
+.launcher-card,
+.bubble,
+.doc-context-menu {
+  border-color: var(--border-strong);
+}
+
+.overlay {
+  background: rgba(8, 12, 14, 0.48);
+}

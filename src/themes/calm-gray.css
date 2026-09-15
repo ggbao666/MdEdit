@@ -1,0 +1,129 @@
+:root {
+  --theme-name: "沉静灰";
+  --theme-appearance: light;
+  --theme-description: "更低亮度的中性灰界面，适合长时间专注使用。";
+  --theme-order: 12;
+
+  --bg: #dce1e4;
+  --bg-grad: linear-gradient(145deg, #e5e8ea 0%, #dce1e4 58%, #d7dde0 100%);
+  --surface: #edf0f1;
+  --surface-2: #e2e6e8;
+  --surface-3: #d4dade;
+  --border: #cbd2d6;
+  --border-strong: #b7c1c7;
+
+  --text: #273137;
+  --text-2: #566269;
+  --text-3: #7b878e;
+  --accent: #536f7d;
+  --accent-hover: #435e6b;
+  --accent-soft: rgba(83, 111, 125, 0.14);
+  --accent-ring: rgba(83, 111, 125, 0.3);
+
+  --danger: #b05257;
+  --danger-hover: #974348;
+  --code-bg: #dfe4e6;
+  --mark: #ddd1a2;
+
+  --shadow-sm: 0 1px 2px rgba(30, 40, 46, 0.08);
+  --shadow-md: 0 8px 24px rgba(30, 40, 46, 0.12);
+  --shadow-lg: 0 20px 50px rgba(30, 40, 46, 0.18);
+
+  --tok-key: #7d5a77;
+  --tok-str: #476b57;
+  --tok-num: #936044;
+  --tok-com: #77838a;
+  --tok-func: #456b8a;
+  --tok-type: #665f87;
+  --tok-attr: #436b78;
+}
+
+.topbar {
+  border-bottom-color: var(--border-strong);
+  background: color-mix(in srgb, var(--surface) 88%, transparent);
+}
+
+.toolbar {
+  background: color-mix(in srgb, var(--surface) 78%, transparent);
+}
+
+.sidebar,
+.outline-sidebar {
+  background: color-mix(in srgb, var(--surface-2) 90%, var(--bg));
+}
+
+.scroll-area {
+  background: var(--surface);
+}
+
+.statusbar {
+  background: var(--surface-2);
+}
+
+.current-doc {
+  border-color: var(--border);
+  background: var(--surface-2);
+  box-shadow: none;
+}
+
+.current-doc:hover {
+  background: var(--surface-3);
+}
+
+.current-doc:focus-within {
+  background: var(--surface);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+.doc-title {
+  color: var(--text-2);
+}
+
+.sidebar-tab.is-active {
+  background: var(--surface);
+  box-shadow: var(--shadow-sm);
+}
+
+.doclist-search input,
+.link-input {
+  background: var(--surface);
+}
+
+.doclist-item.is-active {
+  background: var(--accent-soft);
+}
+
+.doclist-item.is-active .doclist-icon,
+.doclist-item.is-active .doclist-title {
+  color: var(--accent);
+}
+
+.page:not(.is-source) .editor-shell {
+  background: transparent;
+}
+
+.tiptap h1::before,
+.tiptap h2::before,
+.tiptap h3::before {
+  opacity: 0.62;
+}
+
+.tiptap blockquote {
+  padding: 0.55em 1em;
+  background: var(--accent-soft);
+}
+
+.block-menu,
+.link-pop,
+.slash-menu,
+.sheet,
+.about-card,
+.launcher-card,
+.bubble,
+.doc-context-menu {
+  border-color: var(--border-strong);
+}
+
+.overlay {
+  background: rgba(35, 44, 49, 0.32);
+}

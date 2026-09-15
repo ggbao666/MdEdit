@@ -54,6 +54,7 @@ import {
   saveDocAs,
   setActiveRoot,
   writeAssetFile,
+  writeExternalAssetFile,
   writeDraftFile,
   writeDocFile,
   type FolderMeta,
@@ -527,17 +528,25 @@ export default function App() {
       if (!sourceMode && (!ed || ed.isDestroyed)) return
 
       const target = currentDoc?.root || null
-      const toDisk = prefs.imageMode === 'file' && Boolean(target)
+      const customAssetDirectory = prefs.assetDirMode === 'custom' ? prefs.customAssetDir.trim() : ''
+      const toDisk = prefs.imageMode === 'file' && Boolean(customAssetDirectory || target)
       const sourceSnippets: string[] = []
       let inserted = 0
 
       for (const file of files) {
         try {
-          if (toDisk && target) {
+          if (toDisk) {
             const bytes = await fileToBytes(file)
             const name = assetFileName(file.name, file.type)
-            const want = assetRelPath(resolveAssetDir(prefs.assetDir, titleRef.current), name)
-            const saved = await writeAssetFile(target, want, bytes)
+            const saved = customAssetDirectory
+              ? await writeExternalAssetFile(customAssetDirectory, name, bytes)
+              : target
+                ? await writeAssetFile(
+                    target,
+                    assetRelPath(resolveAssetDir(prefs.assetDir, titleRef.current), name),
+                    bytes,
+                  )
+                : null
             if (!saved) continue
             if (sourceMode) {
               const destination = /[\s()<>]/.test(saved) ? `<${saved}>` : saved
@@ -567,7 +576,15 @@ export default function App() {
       pushToast(toDisk ? `已插入 ${inserted} 张原图到资源目录` : `已内联插入 ${inserted} 张图片`)
       if (!sourceMode) scheduleSave()
     },
-    [currentDoc?.root, prefs.imageMode, prefs.assetDir, pushToast, scheduleSave],
+    [
+      currentDoc?.root,
+      prefs.imageMode,
+      prefs.assetDir,
+      prefs.assetDirMode,
+      prefs.customAssetDir,
+      pushToast,
+      scheduleSave,
+    ],
   )
 
   /* ---------------- 编辑器实例 ----------------

@@ -58,6 +58,7 @@ const ABSOLUTE_SRC = /^(?:data|blob|https?|file|tiptora):/i
 export function assetUrl(rel: string | null | undefined, root?: string | null): string {
   const value = String(rel ?? '').trim()
   if (!value) return ''
+  if (/^file:/i.test(value)) return `tiptora://external?u=${encodeURIComponent(value)}`
   if (ABSOLUTE_SRC.test(value)) return value
   const dir = root ?? activeRoot
   if (dir) return `tiptora://asset?r=${encodeURIComponent(dir)}&p=${encodeURIComponent(value)}`
@@ -321,6 +322,32 @@ export async function writeAssetFile(root: string, rel: string, bytes: Uint8Arra
   if (!api) return null
   try {
     return await api.writeAsset(root, rel, bytes)
+  } catch {
+    return null
+  }
+}
+
+/** 让用户通过系统对话框选择并授权一个本机图片目录。 */
+export async function pickAssetDirectory(): Promise<string | null> {
+  const api = ws()
+  if (!api) return null
+  try {
+    return await api.pickAssetDirectory()
+  } catch {
+    return null
+  }
+}
+
+/** 向用户已授权的本机目录写入图片，返回可存进 Markdown 的 file URL。 */
+export async function writeExternalAssetFile(
+  directory: string,
+  fileName: string,
+  bytes: Uint8Array,
+): Promise<string | null> {
+  const api = ws()
+  if (!api) return null
+  try {
+    return await api.writeExternalAsset(directory, fileName, bytes)
   } catch {
     return null
   }
