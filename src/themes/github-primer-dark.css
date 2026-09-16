@@ -1,0 +1,209 @@
+:root {
+  --theme-name: "GitHub Primer·暗色";
+  --theme-appearance: dark;
+  --theme-description: "GitHub 当前 Primer 暗色风格：深色代码画布、蓝色链接和高辨识度边框。";
+  --theme-order: 31;
+
+  --bg: #0d1117;
+  --bg-grad: linear-gradient(#0d1117, #0d1117);
+  --surface: #0d1117;
+  --surface-2: #151b23;
+  --surface-3: #212830;
+  --border: #3d444d;
+  --border-strong: #656c76;
+
+  --text: #f0f6fc;
+  --text-2: #9198a1;
+  --text-3: #656c76;
+  --accent: #4493f8;
+  --accent-hover: #58a6ff;
+  --accent-soft: rgba(56, 139, 253, 0.15);
+  --accent-ring: rgba(56, 139, 253, 0.4);
+
+  --danger: #f85149;
+  --danger-hover: #ff7b72;
+  --code-bg: rgba(110, 118, 129, 0.2);
+  --mark: rgba(187, 128, 9, 0.35);
+
+  --shadow-sm: 0 0 transparent;
+  --shadow-md: 0 3px 6px rgba(1, 4, 9, 0.42);
+  --shadow-lg: 0 8px 24px rgba(1, 4, 9, 0.64);
+
+  --radius-sm: 6px;
+  --radius: 8px;
+  --radius-lg: 12px;
+
+  --tok-key: #ff7b72;
+  --tok-str: #a5d6ff;
+  --tok-num: #79c0ff;
+  --tok-com: #8b949e;
+  --tok-func: #d2a8ff;
+  --tok-type: #ffa657;
+  --tok-attr: #7ee787;
+}
+
+.topbar {
+  border-bottom-color: var(--border);
+  background: #010409;
+  backdrop-filter: none;
+}
+
+.toolbar {
+  border-bottom-color: var(--border);
+  background: var(--surface);
+  backdrop-filter: none;
+}
+
+.sidebar,
+.outline-sidebar {
+  background: #151b23;
+}
+
+.sidebar {
+  border-right-color: var(--border);
+}
+
+.outline-sidebar {
+  border-left-color: var(--border);
+}
+
+.scroll-area {
+  background: #010409;
+}
+
+.statusbar {
+  border-top-color: var(--border);
+  background: var(--surface);
+  backdrop-filter: none;
+}
+
+.current-doc-label .doc-title {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.doclist-search input,
+.link-input,
+.set-input,
+.theme-select-control {
+  border-color: var(--border-strong);
+  border-radius: 6px;
+  background: var(--surface);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.04) inset;
+}
+
+.doclist-search input:focus,
+.link-input:focus,
+.set-input:focus,
+.theme-select-control:focus-visible {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+.doclist-item.is-active,
+.sidebar-tab.is-active,
+.tool-btn.is-active,
+.btn.is-active {
+  background: rgba(56, 139, 253, 0.16);
+  color: #58a6ff;
+}
+
+.btn:hover,
+.tool-btn:hover,
+.block-select-trigger:hover,
+.doc-context-menu button:hover,
+.doc-context-menu button:focus-visible {
+  background: rgba(177, 186, 196, 0.12);
+}
+
+.btn-primary,
+.launcher-sub.is-primary {
+  border: 1px solid rgba(240, 246, 252, 0.1);
+  background: #238636;
+  color: #ffffff;
+  box-shadow: 0 0 transparent;
+}
+
+.btn-primary:hover,
+.launcher-sub.is-primary:hover {
+  background: #2ea043;
+}
+
+.page:not(.is-source) .editor-shell {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  box-shadow: none;
+}
+
+.tiptap h1::before,
+.tiptap h2::before,
+.tiptap h3::before {
+  display: none;
+}
+
+.tiptap h1,
+.tiptap h2 {
+  padding-bottom: 0.3em;
+  border-bottom: 1px solid var(--border);
+}
+
+.tiptap a {
+  border-bottom: 0;
+  color: var(--accent);
+}
+
+.tiptap a:hover {
+  background: transparent;
+  text-decoration: underline;
+}
+
+.tiptap code,
+.tiptap pre,
+.tiptap .code-language-trigger,
+.tiptap .code-language-menu {
+  border-radius: 6px;
+}
+
+.tiptap blockquote {
+  padding: 0 1em;
+  border-left: 0.25em solid var(--border-strong);
+  border-radius: 0;
+  color: var(--text-2);
+}
+
+.tiptap table {
+  border-radius: 6px;
+}
+
+.tiptap tr:nth-child(2n) td {
+  background: var(--surface-2);
+}
+
+.block-menu,
+.table-context-menu,
+.link-pop,
+.slash-menu,
+.sheet,
+.about-card,
+.welcome-card,
+.launcher-card,
+.bubble,
+.doc-context-menu,
+.theme-select-menu,
+.topbar-theme-menu,
+.folder-dialog,
+.delete-dialog,
+.toast,
+.markdown-drop-overlay > div {
+  border-color: var(--border);
+  border-radius: 8px;
+  background: var(--surface-2);
+  box-shadow: var(--shadow-lg);
+  backdrop-filter: none;
+}
+
+.overlay,
+.folder-dialog-backdrop {
+  background: rgba(1, 4, 9, 0.72);
+}

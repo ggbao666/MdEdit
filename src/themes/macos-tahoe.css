@@ -1,0 +1,228 @@
+:root {
+  --theme-name: "macOS Tahoe";
+  --theme-appearance: light;
+  --theme-description: "macOS 26 Tahoe 风格：雾面玻璃侧栏、系统蓝、克制高光与桌面级层次。";
+  --theme-order: 19;
+
+  --bg: #eef0f5;
+  --bg-grad:
+    radial-gradient(circle at 8% -12%, rgba(105, 183, 255, 0.3) 0%, transparent 34%),
+    radial-gradient(circle at 92% -6%, rgba(177, 139, 255, 0.2) 0%, transparent 31%),
+    linear-gradient(155deg, #f8f9fb 0%, #eef1f6 48%, #f4f1f8 100%);
+
+  --surface: rgba(255, 255, 255, 0.82);
+  --surface-2: rgba(245, 246, 249, 0.8);
+  --surface-3: rgba(226, 229, 235, 0.82);
+  --border: rgba(42, 49, 60, 0.1);
+  --border-strong: rgba(42, 49, 60, 0.17);
+
+  --text: #1d1d1f;
+  --text-2: #5b5c61;
+  --text-3: #8a8b91;
+  --accent: #007aff;
+  --accent-hover: #006ee6;
+  --accent-soft: rgba(0, 122, 255, 0.12);
+  --accent-ring: rgba(0, 122, 255, 0.26);
+
+  --danger: #ff3b30;
+  --danger-hover: #e5342b;
+  --code-bg: rgba(234, 236, 240, 0.86);
+  --mark: rgba(255, 204, 0, 0.32);
+
+  --shadow-sm: 0 1px 2px rgba(28, 32, 38, 0.08);
+  --shadow-md:
+    0 8px 26px rgba(28, 32, 38, 0.11),
+    0 1px 0 rgba(255, 255, 255, 0.78) inset;
+  --shadow-lg:
+    0 22px 64px rgba(28, 32, 38, 0.18),
+    0 1px 0 rgba(255, 255, 255, 0.9) inset;
+
+  --radius-sm: 9px;
+  --radius: 14px;
+  --radius-lg: 20px;
+
+  --topbar-h: 52px;
+  --toolbar-h: 48px;
+
+  --tok-key: #ad3da4;
+  --tok-str: #178548;
+  --tok-num: #9c5d27;
+  --tok-com: #7f8c8d;
+  --tok-func: #0b63a8;
+  --tok-type: #7047a8;
+  --tok-attr: #286f87;
+}
+
+body {
+  background-attachment: fixed;
+}
+
+.topbar,
+.toolbar,
+.sidebar,
+.outline-sidebar,
+.statusbar {
+  -webkit-backdrop-filter: saturate(1.35) blur(24px);
+  backdrop-filter: saturate(1.35) blur(24px);
+}
+
+.topbar {
+  border-bottom-color: rgba(37, 41, 49, 0.11);
+  background: rgba(250, 251, 253, 0.72);
+  box-shadow: inset 0 1px rgba(255, 255, 255, 0.86);
+}
+
+.toolbar {
+  border-bottom-color: rgba(37, 41, 49, 0.09);
+  background: rgba(245, 247, 250, 0.66);
+  box-shadow: inset 0 1px rgba(255, 255, 255, 0.7);
+}
+
+.sidebar,
+.outline-sidebar {
+  background:
+    linear-gradient(180deg, rgba(244, 246, 250, 0.78), rgba(232, 235, 241, 0.68)),
+    rgba(235, 238, 244, 0.64);
+}
+
+.sidebar {
+  border-right-color: rgba(39, 44, 53, 0.1);
+  box-shadow: inset -1px 0 rgba(255, 255, 255, 0.58);
+}
+
+.outline-sidebar {
+  border-left-color: rgba(39, 44, 53, 0.1);
+  box-shadow: inset 1px 0 rgba(255, 255, 255, 0.58);
+}
+
+.scroll-area {
+  background: rgba(235, 237, 242, 0.5);
+}
+
+.statusbar {
+  border-top-color: rgba(39, 44, 53, 0.1);
+  background: rgba(243, 245, 248, 0.74);
+  box-shadow: inset 0 1px rgba(255, 255, 255, 0.66);
+}
+
+.current-doc-label .doc-title {
+  color: #36373b;
+  font-weight: 620;
+  letter-spacing: -0.01em;
+}
+
+.doclist-search input,
+.link-input,
+.set-input,
+.theme-select-control {
+  border-color: rgba(43, 47, 55, 0.12);
+  background: rgba(255, 255, 255, 0.7);
+  box-shadow:
+    0 1px 2px rgba(27, 31, 38, 0.06),
+    inset 0 1px rgba(255, 255, 255, 0.8);
+}
+
+.doclist-search input:focus,
+.link-input:focus,
+.set-input:focus,
+.theme-select-control:focus-visible {
+  border-color: rgba(0, 122, 255, 0.55);
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+.sidebar-tab.is-active,
+.doclist-item.is-active,
+.tool-btn.is-active,
+.btn.is-active {
+  background: var(--accent-soft);
+  color: var(--accent);
+  box-shadow: inset 0 0 0 1px rgba(0, 122, 255, 0.05);
+}
+
+.btn:hover,
+.tool-btn:hover,
+.block-select-trigger:hover,
+.doc-context-menu button:hover,
+.doc-context-menu button:focus-visible {
+  background: rgba(29, 29, 31, 0.065);
+}
+
+.btn-primary,
+.launcher-sub.is-primary {
+  border: 1px solid rgba(0, 85, 190, 0.34);
+  background: linear-gradient(180deg, #2997ff 0%, #087ff5 48%, #0071e3 100%);
+  box-shadow:
+    0 5px 14px rgba(0, 102, 204, 0.24),
+    inset 0 1px rgba(255, 255, 255, 0.35);
+}
+
+.page:not(.is-source) .editor-shell {
+  border: 1px solid rgba(37, 41, 49, 0.1);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow:
+    0 14px 42px rgba(34, 38, 45, 0.09),
+    inset 0 1px rgba(255, 255, 255, 0.95);
+}
+
+.tiptap blockquote {
+  padding: 0.58em 1em;
+  border-radius: 0 10px 10px 0;
+  background: rgba(0, 122, 255, 0.055);
+}
+
+.block-menu,
+.table-context-menu,
+.link-pop,
+.slash-menu,
+.sheet,
+.about-card,
+.welcome-card,
+.launcher-card,
+.bubble,
+.doc-context-menu,
+.theme-select-menu,
+.topbar-theme-menu,
+.folder-dialog,
+.delete-dialog,
+.toast,
+.markdown-drop-overlay > div {
+  border-color: rgba(42, 47, 55, 0.13);
+  background: rgba(250, 251, 253, 0.86);
+  box-shadow: var(--shadow-lg);
+  -webkit-backdrop-filter: saturate(1.45) blur(30px);
+  backdrop-filter: saturate(1.45) blur(30px);
+}
+
+.overlay,
+.folder-dialog-backdrop {
+  background: rgba(57, 61, 69, 0.18);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+}
+
+@supports not ((-webkit-backdrop-filter: blur(1px)) or (backdrop-filter: blur(1px))) {
+  .topbar,
+  .toolbar,
+  .sidebar,
+  .outline-sidebar,
+  .statusbar,
+  .block-menu,
+  .table-context-menu,
+  .link-pop,
+  .slash-menu,
+  .sheet,
+  .about-card,
+  .welcome-card,
+  .launcher-card,
+  .bubble,
+  .doc-context-menu,
+  .theme-select-menu,
+  .topbar-theme-menu,
+  .folder-dialog,
+  .delete-dialog,
+  .toast {
+    background: rgba(248, 249, 252, 0.97);
+  }
+}
