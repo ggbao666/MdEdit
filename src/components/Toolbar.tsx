@@ -383,34 +383,6 @@ export default function Toolbar({
           </ToolButton>
         </Group>
 
-        {editor.isActive('table') && (
-          <>
-            <Sep />
-            <Group>
-              <ToolButton title="在上方插入行" onClick={() => editor.chain().focus().addRowBefore().run()}>
-                <span style={{ fontSize: 11, fontWeight: 600 }}>行↑</span>
-              </ToolButton>
-              <ToolButton title="在下方插入行" onClick={() => editor.chain().focus().addRowAfter().run()}>
-                <span style={{ fontSize: 11, fontWeight: 600 }}>行↓</span>
-              </ToolButton>
-              <ToolButton title="在左侧插入列" onClick={() => editor.chain().focus().addColumnBefore().run()}>
-                <span style={{ fontSize: 11, fontWeight: 600 }}>列←</span>
-              </ToolButton>
-              <ToolButton title="在右侧插入列" onClick={() => editor.chain().focus().addColumnAfter().run()}>
-                <span style={{ fontSize: 11, fontWeight: 600 }}>列→</span>
-              </ToolButton>
-              <ToolButton title="删除整行" onClick={() => editor.chain().focus().deleteRow().run()}>
-                <span style={{ fontSize: 11, fontWeight: 600 }}>删行</span>
-              </ToolButton>
-              <ToolButton title="删除整列" onClick={() => editor.chain().focus().deleteColumn().run()}>
-                <span style={{ fontSize: 11, fontWeight: 600 }}>删列</span>
-              </ToolButton>
-              <ToolButton title="删除表格" onClick={() => editor.chain().focus().deleteTable().run()}>
-                <span style={{ fontSize: 11, fontWeight: 600 }}>删表</span>
-              </ToolButton>
-            </Group>
-          </>
-        )}
           </>
         )}
       </div>

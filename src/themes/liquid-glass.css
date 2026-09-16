@@ -197,6 +197,7 @@ body {
 }
 
 .block-menu,
+.table-context-menu,
 .link-pop,
 .slash-menu,
 .sheet,
@@ -234,6 +235,7 @@ body {
   .outline-sidebar,
   .statusbar,
   .block-menu,
+  .table-context-menu,
   .link-pop,
   .slash-menu,
   .sheet,

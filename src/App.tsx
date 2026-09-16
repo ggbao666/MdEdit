@@ -21,6 +21,7 @@ import Settings from './components/Settings'
 import Shortcuts from './components/Shortcuts'
 import type { SourceEditorHandle } from './components/SourceEditor'
 import ThemeSwitcher from './components/ThemeSwitcher'
+import TableContextMenu from './components/TableContextMenu'
 import Toolbar from './components/Toolbar'
 import { APP_SLUG } from './config/app'
 import { applyTheme, type Theme } from './config/themes'
@@ -1531,7 +1532,10 @@ export default function App() {
                         />
                       </Suspense>
                     ) : (
-                      <EditorContent editor={editor} />
+                      <>
+                        <EditorContent editor={editor} />
+                        <TableContextMenu editor={editor} />
+                      </>
                     )}
                   </div>
                 </div>
