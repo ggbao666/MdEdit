@@ -168,25 +168,20 @@ textarea {
   box-shadow: 0 0 0 3px var(--accent-soft);
 }
 .doc-title {
+  display: block;
   width: 100%;
   min-width: 0;
   height: 28px;
-  border: 0;
-  background: transparent;
   padding: 0 4px;
+  overflow: hidden;
+  color: var(--text-2);
   font-size: 14px;
-  font-weight: 400;
+  font-weight: 500;
   line-height: 28px;
   text-align: center;
-  color: var(--accent);
   text-overflow: ellipsis;
-}
-.doc-title:focus {
-  outline: none;
-}
-.doc-title::placeholder {
-  color: var(--text-3);
-  font-weight: 450;
+  white-space: nowrap;
+  cursor: default;
 }
 
 .topbar-spacer {
@@ -207,6 +202,39 @@ textarea {
 }
 .topbar-actions .divider-v {
   margin-inline: 1px;
+}
+
+.topbar-theme-switcher {
+  position: relative;
+  display: flex;
+}
+.topbar-theme-trigger {
+  position: relative;
+}
+.topbar-theme-dot {
+  position: absolute;
+  right: 4px;
+  bottom: 4px;
+  width: 6px;
+  height: 6px;
+  border: 1px solid var(--surface);
+  border-radius: 50%;
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--text) 12%, transparent);
+}
+.topbar-theme-menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 90;
+  width: 224px;
+  max-height: min(420px, calc(100vh - var(--topbar-h) - 24px));
+  overflow-y: auto;
+  padding: 6px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: var(--shadow-lg);
+  animation: pop 0.14s var(--ease);
 }
 
 @media (max-width: 1000px) {
@@ -758,7 +786,7 @@ textarea {
   gap: 2px;
   opacity: 0;
   padding-left: 6px;
-  background: color-mix(in srgb, var(--surface-2) 88%, transparent);
+  background: transparent;
   pointer-events: none;
   transition: opacity 0.14s var(--ease);
 }
@@ -1069,8 +1097,8 @@ textarea {
   transition: background 0.12s var(--ease), color 0.12s var(--ease);
 }
 .doclist-act:hover:not(:disabled) {
-  background: var(--surface-3);
-  color: var(--text);
+  background: transparent;
+  color: var(--accent);
 }
 .doclist-act:disabled {
   opacity: 0.3;
@@ -1081,7 +1109,7 @@ textarea {
   font-weight: 600;
 }
 .doclist-act.is-danger:hover {
-  background: rgba(220, 38, 38, 0.12);
+  background: transparent;
   color: #dc2626;
 }
 

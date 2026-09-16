@@ -6,10 +6,8 @@ import { Selection } from '@tiptap/pm/state'
 import {
   FileText,
   FolderTree,
-  Moon,
   Save,
   Settings as SettingsIcon,
-  Sun,
 } from 'lucide-react'
 
 import BubbleBar from './components/BubbleBar'
@@ -22,9 +20,10 @@ import type { HeadingItem } from './components/Outline'
 import Settings from './components/Settings'
 import Shortcuts from './components/Shortcuts'
 import type { SourceEditorHandle } from './components/SourceEditor'
+import ThemeSwitcher from './components/ThemeSwitcher'
 import Toolbar from './components/Toolbar'
 import { APP_SLUG } from './config/app'
-import { applyTheme, DEFAULT_DARK_THEME, THEMES, type Theme } from './config/themes'
+import { applyTheme, type Theme } from './config/themes'
 import { createExtensions, countChars, countWords } from './editor/extensions'
 import { createDropHandler, createPasteHandler } from './editor/imageInput'
 import { assetFileName, assetRelPath, fileToBytes, fileToDataUrl, resolveAssetDir } from './lib/assets'
@@ -138,7 +137,6 @@ export default function App() {
 
   /* ---------------- 引用 ---------------- */
   const scrollElRef = useRef<HTMLDivElement | null>(null)
-  const titleInputRef = useRef<HTMLInputElement>(null)
   const prefsRef = useRef(prefs)
   const lastRootsRef = useRef<WorkspaceInfo[]>([])
   const headingsRef = useRef<HeadingItem[]>([])
@@ -1416,23 +1414,8 @@ export default function App() {
           <FolderTree size={17} strokeWidth={2} />
         </button>
 
-        <div className="current-doc" title="当前文档名称，点击即可修改">
-          <input
-            ref={titleInputRef}
-            className="doc-title"
-            value={title}
-            placeholder="未命名文档"
-            aria-label="当前文档名称，点击修改"
-            disabled={!currentDoc}
-            onChange={(e) => {
-              const next = e.target.value
-              const id = activeIdRef.current
-              const nextDocs = docsRef.current.map((d) => (d.id === id ? { ...d, title: next } : d))
-              docsRef.current = nextDocs
-              setDocs(nextDocs)
-              scheduleSave()
-            }}
-          />
+        <div className="current-doc" title={currentDoc ? title : undefined}>
+          <span className="doc-title">{title}</span>
         </div>
 
         <div className="topbar-spacer" />
@@ -1457,14 +1440,7 @@ export default function App() {
           <button type="button" className="btn" title="设置：目录与图片的存储方式" onClick={() => setShowSettings(true)}>
             <SettingsIcon size={17} strokeWidth={2} />
           </button>
-          <button
-            type="button"
-            className="btn"
-            title={THEMES[theme].appearance === 'light' ? '切换为极简深色' : '切换为亮色'}
-            onClick={() => setTheme((current) => (THEMES[current].appearance === 'light' ? DEFAULT_DARK_THEME : 'light'))}
-          >
-            {THEMES[theme].appearance === 'light' ? <Moon size={17} strokeWidth={2} /> : <Sun size={17} strokeWidth={2} />}
-          </button>
+          <ThemeSwitcher theme={theme} onChange={setTheme} />
         </div>
       </header>
 

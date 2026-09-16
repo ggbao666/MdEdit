@@ -1,0 +1,252 @@
+:root {
+  --theme-name: "液态玻璃";
+  --theme-appearance: light;
+  --theme-description: "灵感来自 Apple Liquid Glass：通透材质、柔和折射色与流动高光。";
+  --theme-order: 18;
+
+  --bg: #eaf2fb;
+  --bg-grad:
+    radial-gradient(circle at 12% -8%, rgba(119, 206, 255, 0.72) 0%, transparent 36%),
+    radial-gradient(circle at 88% 4%, rgba(193, 160, 255, 0.5) 0%, transparent 34%),
+    radial-gradient(circle at 72% 96%, rgba(111, 226, 206, 0.38) 0%, transparent 38%),
+    radial-gradient(circle at 5% 86%, rgba(255, 180, 204, 0.36) 0%, transparent 34%),
+    linear-gradient(145deg, #f8fbff 0%, #eaf3fb 48%, #f5f0ff 100%);
+
+  --surface: rgba(255, 255, 255, 0.62);
+  --surface-2: rgba(246, 250, 255, 0.48);
+  --surface-3: rgba(225, 237, 250, 0.58);
+  --border: rgba(105, 130, 160, 0.16);
+  --border-strong: rgba(88, 116, 150, 0.25);
+
+  --text: #1e2a38;
+  --text-2: #516277;
+  --text-3: #7c8da1;
+  --accent: #087ff5;
+  --accent-hover: #0069d9;
+  --accent-soft: rgba(0, 122, 255, 0.12);
+  --accent-ring: rgba(0, 122, 255, 0.28);
+
+  --danger: #e14d5a;
+  --danger-hover: #c83b48;
+  --code-bg: rgba(226, 237, 249, 0.62);
+  --mark: rgba(255, 215, 92, 0.42);
+
+  --shadow-sm:
+    0 1px 2px rgba(49, 71, 99, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.65);
+  --shadow-md:
+    0 10px 30px rgba(48, 78, 115, 0.14),
+    inset 0 1px 0 rgba(255, 255, 255, 0.78);
+  --shadow-lg:
+    0 24px 64px rgba(42, 69, 106, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.82),
+    inset 0 -1px 0 rgba(95, 122, 156, 0.1);
+
+  --radius-sm: 11px;
+  --radius: 16px;
+  --radius-lg: 24px;
+
+  --tok-key: #9a5590;
+  --tok-str: #26795a;
+  --tok-num: #ad632e;
+  --tok-com: #8290a0;
+  --tok-func: #176da8;
+  --tok-type: #6f5da7;
+  --tok-attr: #29758a;
+}
+
+body {
+  background-attachment: fixed;
+}
+
+.topbar,
+.toolbar,
+.sidebar,
+.outline-sidebar,
+.statusbar {
+  -webkit-backdrop-filter: saturate(1.55) blur(26px);
+  backdrop-filter: saturate(1.55) blur(26px);
+}
+
+.topbar {
+  border-bottom-color: rgba(255, 255, 255, 0.52);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.72), rgba(244, 249, 255, 0.42)),
+    rgba(255, 255, 255, 0.24);
+  box-shadow:
+    inset 0 -1px 0 rgba(89, 115, 148, 0.1),
+    0 8px 28px rgba(52, 81, 116, 0.08);
+}
+
+.toolbar {
+  border-bottom-color: rgba(93, 120, 153, 0.13);
+  background: rgba(247, 251, 255, 0.44);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.62);
+}
+
+.sidebar,
+.outline-sidebar {
+  background:
+    linear-gradient(160deg, rgba(255, 255, 255, 0.58), rgba(230, 241, 253, 0.34)),
+    rgba(235, 245, 255, 0.26);
+}
+
+.sidebar {
+  border-right-color: rgba(255, 255, 255, 0.56);
+  box-shadow: inset -1px 0 rgba(86, 114, 148, 0.1);
+}
+
+.outline-sidebar {
+  border-left-color: rgba(255, 255, 255, 0.56);
+  box-shadow: inset 1px 0 rgba(86, 114, 148, 0.1);
+}
+
+.scroll-area {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.statusbar {
+  border-top-color: rgba(255, 255, 255, 0.54);
+  background: rgba(247, 251, 255, 0.46);
+  box-shadow: inset 0 1px 0 rgba(93, 120, 153, 0.1);
+}
+
+.current-doc,
+.doclist-search input,
+.link-input,
+.set-input,
+.theme-select-control {
+  border-color: rgba(255, 255, 255, 0.7);
+  background:
+    linear-gradient(150deg, rgba(255, 255, 255, 0.72), rgba(235, 244, 254, 0.4)),
+    rgba(255, 255, 255, 0.32);
+  box-shadow:
+    0 5px 18px rgba(45, 74, 110, 0.09),
+    inset 0 1px 0 rgba(255, 255, 255, 0.9),
+    inset 0 -1px 0 rgba(86, 115, 150, 0.08);
+  -webkit-backdrop-filter: saturate(1.4) blur(18px);
+  backdrop-filter: saturate(1.4) blur(18px);
+}
+
+.current-doc:hover,
+.doclist-search input:hover,
+.theme-select-control:hover {
+  background: rgba(255, 255, 255, 0.66);
+}
+
+.current-doc:focus-within,
+.doclist-search input:focus,
+.link-input:focus,
+.set-input:focus,
+.theme-select-control:focus-visible {
+  border-color: rgba(0, 122, 255, 0.52);
+  background: rgba(255, 255, 255, 0.76);
+  box-shadow:
+    0 0 0 4px var(--accent-soft),
+    0 8px 24px rgba(46, 91, 142, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.96);
+}
+
+.sidebar-tab.is-active,
+.doclist-item.is-active,
+.tool-btn.is-active,
+.btn.is-active {
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.64), rgba(214, 234, 255, 0.42)),
+    var(--accent-soft);
+  box-shadow:
+    0 5px 16px rgba(50, 84, 125, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.82);
+}
+
+.btn:hover,
+.tool-btn:hover,
+.block-select-trigger:hover,
+.doc-context-menu button:hover,
+.doc-context-menu button:focus-visible {
+  background: rgba(255, 255, 255, 0.52);
+}
+
+.btn-primary,
+.launcher-sub.is-primary {
+  border: 1px solid rgba(255, 255, 255, 0.42);
+  background: linear-gradient(180deg, #2997ff 0%, #087ff5 52%, #0872dc 100%);
+  box-shadow:
+    0 8px 20px rgba(0, 105, 217, 0.24),
+    inset 0 1px 0 rgba(255, 255, 255, 0.46);
+}
+
+.page:not(.is-source) .editor-shell {
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  border-radius: 22px;
+  background:
+    linear-gradient(150deg, rgba(255, 255, 255, 0.58), rgba(247, 251, 255, 0.36)),
+    rgba(255, 255, 255, 0.28);
+  box-shadow:
+    0 16px 48px rgba(48, 78, 114, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.82);
+  -webkit-backdrop-filter: saturate(1.25) blur(16px);
+  backdrop-filter: saturate(1.25) blur(16px);
+}
+
+.tiptap blockquote {
+  padding: 0.58em 1em;
+  border-radius: 0 12px 12px 0;
+  background: rgba(255, 255, 255, 0.38);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.62);
+}
+
+.block-menu,
+.link-pop,
+.slash-menu,
+.sheet,
+.about-card,
+.welcome-card,
+.launcher-card,
+.bubble,
+.doc-context-menu,
+.theme-select-menu,
+.topbar-theme-menu,
+.folder-dialog,
+.delete-dialog,
+.toast,
+.markdown-drop-overlay > div {
+  border-color: rgba(255, 255, 255, 0.72);
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.72), rgba(230, 241, 253, 0.48)),
+    rgba(248, 252, 255, 0.45);
+  box-shadow: var(--shadow-lg);
+  -webkit-backdrop-filter: saturate(1.55) blur(32px);
+  backdrop-filter: saturate(1.55) blur(32px);
+}
+
+.overlay,
+.folder-dialog-backdrop {
+  background: rgba(69, 91, 120, 0.2);
+  -webkit-backdrop-filter: saturate(1.15) blur(8px);
+  backdrop-filter: saturate(1.15) blur(8px);
+}
+
+@supports not ((-webkit-backdrop-filter: blur(1px)) or (backdrop-filter: blur(1px))) {
+  .topbar,
+  .toolbar,
+  .sidebar,
+  .outline-sidebar,
+  .statusbar,
+  .block-menu,
+  .link-pop,
+  .slash-menu,
+  .sheet,
+  .about-card,
+  .welcome-card,
+  .launcher-card,
+  .bubble,
+  .doc-context-menu,
+  .theme-select-menu,
+  .topbar-theme-menu,
+  .folder-dialog,
+  .delete-dialog,
+  .toast {
+    background: rgba(247, 251, 255, 0.94);
+  }
+}
