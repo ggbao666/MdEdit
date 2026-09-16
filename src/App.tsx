@@ -1414,7 +1414,7 @@ export default function App() {
           <FolderTree size={17} strokeWidth={2} />
         </button>
 
-        <div className="current-doc" title={currentDoc ? title : undefined}>
+        <div className="current-doc-label" title={currentDoc ? title : undefined} aria-label="当前文档">
           <span className="doc-title">{title}</span>
         </div>
 

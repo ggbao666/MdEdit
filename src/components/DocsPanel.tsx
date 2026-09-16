@@ -393,7 +393,7 @@ export default function DocsPanel({
           <div className="doclist-actions">
             <button
               type="button"
-              className="doclist-act"
+              className="doclist-act is-rename"
               title="重命名（也可双击文件名）"
               onClick={(e) => {
                 e.stopPropagation()
@@ -404,7 +404,7 @@ export default function DocsPanel({
             </button>
             <button
               type="button"
-              className="doclist-act"
+              className="doclist-act is-danger"
               title="删除这篇文档"
               onClick={(e) => {
                 e.stopPropagation()
@@ -536,6 +536,7 @@ export default function DocsPanel({
           {!isEditing && <div className="docgroup-actions" role="group" aria-label={`${node.name} 快捷操作`}>
             <button
               type="button"
+              className="docgroup-act is-create-doc"
               title={`在“${node.name}”中新建文档`}
               aria-label={`在“${node.name}”中新建文档`}
               onClick={(event) => {
@@ -547,6 +548,7 @@ export default function DocsPanel({
             </button>
             <button
               type="button"
+              className="docgroup-act is-create-folder"
               title={`在“${node.name}”中新建文件夹`}
               aria-label={`在“${node.name}”中新建文件夹`}
               onClick={(event) => {
@@ -678,6 +680,7 @@ export default function DocsPanel({
                     <div className="docgroup-actions" role="group" aria-label={`${group.name} 快捷操作`}>
                       <button
                         type="button"
+                        className="docgroup-act is-create-doc"
                         title={`在“${group.name}”中新建文档`}
                         aria-label={`在“${group.name}”中新建文档`}
                         onClick={(event) => {
@@ -689,6 +692,7 @@ export default function DocsPanel({
                       </button>
                       <button
                         type="button"
+                        className="docgroup-act is-create-folder"
                         title={`在“${group.name}”中新建文件夹`}
                         aria-label={`在“${group.name}”中新建文件夹`}
                         onClick={(event) => {

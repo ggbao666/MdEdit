@@ -142,41 +142,29 @@ textarea {
   z-index: 1;
 }
 
-.current-doc {
+.current-doc-label {
   position: absolute;
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  width: 280px;
-  height: 30px;
+  width: min(360px, 36vw);
+  height: 32px;
   display: flex;
   align-items: center;
-  padding: 0 10px;
-  border: 1px solid var(--border);
-  border-radius: 11px;
-  background: color-mix(in srgb, var(--surface-2) 76%, transparent);
-  box-shadow: 0 1px 2px color-mix(in srgb, var(--text) 7%, transparent);
-  transition: border-color 0.16s var(--ease), background 0.16s var(--ease), box-shadow 0.16s var(--ease);
+  padding: 0 14px;
+  pointer-events: none;
 }
-.current-doc:hover {
-  border-color: color-mix(in srgb, var(--accent) 45%, var(--border));
-  background: var(--surface-2);
-}
-.current-doc:focus-within {
-  border-color: var(--accent);
-  background: var(--surface);
-  box-shadow: 0 0 0 3px var(--accent-soft);
-}
-.doc-title {
+.current-doc-label .doc-title {
   display: block;
   width: 100%;
   min-width: 0;
   height: 28px;
   padding: 0 4px;
   overflow: hidden;
-  color: var(--text-2);
-  font-size: 14px;
-  font-weight: 500;
+  color: color-mix(in srgb, var(--accent) 72%, var(--text));
+  font-size: 15px;
+  font-weight: 650;
+  letter-spacing: 0.015em;
   line-height: 28px;
   text-align: center;
   text-overflow: ellipsis;
@@ -238,7 +226,7 @@ textarea {
 }
 
 @media (max-width: 1000px) {
-  .current-doc {
+  .current-doc-label {
     position: absolute;
     left: 50%;
     flex: none;
@@ -704,7 +692,7 @@ textarea {
   align-items: center;
   gap: 4px;
   height: 32px;
-  padding: 0 6px 0 4px;
+  padding: 0 54px 0 4px;
   border-radius: 6px;
   background: var(--tree-dir-bg);
   color: var(--text-3);
@@ -807,17 +795,30 @@ textarea {
   background: transparent;
   color: var(--text-3);
   cursor: pointer;
-  transition: background 0.12s var(--ease), color 0.12s var(--ease);
+  transition: color 0.12s var(--ease), transform 0.12s var(--ease);
 }
 .docgroup-actions button:hover {
-  background: var(--surface-3);
-  color: var(--accent);
+  background: transparent;
+  transform: translateY(-1px) scale(1.08);
 }
 .docgroup-actions button:focus-visible {
   outline: 1px solid var(--accent);
   outline-offset: -1px;
-  background: var(--accent-soft);
-  color: var(--accent);
+  background: transparent;
+}
+.docgroup-act.is-create-doc {
+  color: color-mix(in srgb, #168eaa 76%, var(--text));
+}
+.docgroup-act.is-create-doc:hover,
+.docgroup-act.is-create-doc:focus-visible {
+  color: #18b9d6;
+}
+.docgroup-act.is-create-folder {
+  color: color-mix(in srgb, #c17a12 78%, var(--text));
+}
+.docgroup-act.is-create-folder:hover,
+.docgroup-act.is-create-folder:focus-visible {
+  color: #e79a20;
 }
 .docgroup-items {
   display: flex;
@@ -838,7 +839,7 @@ textarea {
   align-items: center;
   gap: 4px;
   min-height: 30px;
-  padding-right: 6px;
+  padding-right: 54px;
   border-radius: 6px;
   background: var(--tree-folder-bg);
   color: var(--text-3);
@@ -1072,7 +1073,7 @@ textarea {
   gap: 2px;
   opacity: 0;
   padding-left: 6px;
-  background: color-mix(in srgb, var(--surface-2) 88%, transparent);
+  background: transparent;
   pointer-events: none;
   transition: opacity 0.14s var(--ease);
 }
@@ -1094,23 +1095,29 @@ textarea {
   color: var(--text-3);
   font-size: 11.5px;
   cursor: pointer;
-  transition: background 0.12s var(--ease), color 0.12s var(--ease);
+  transition: color 0.12s var(--ease), transform 0.12s var(--ease);
 }
 .doclist-act:hover:not(:disabled) {
   background: transparent;
-  color: var(--accent);
+  transform: translateY(-1px) scale(1.08);
 }
 .doclist-act:disabled {
   opacity: 0.3;
   cursor: not-allowed;
 }
+.doclist-act.is-rename {
+  color: color-mix(in srgb, #7069df 76%, var(--text));
+}
+.doclist-act.is-rename:hover {
+  color: #8b7cf2;
+}
 .doclist-act.is-danger {
-  color: #dc2626;
+  color: var(--danger);
   font-weight: 600;
 }
 .doclist-act.is-danger:hover {
   background: transparent;
-  color: #dc2626;
+  color: var(--danger-hover);
 }
 
 .outline {
